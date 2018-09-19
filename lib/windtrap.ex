@@ -34,6 +34,15 @@ defmodule Windtrap do
 		|> decode_data
 	end
 
+	def dump module do
+		IO.puts "The module contains #{Enum.count(module.sections)} sections"
+		
+		IO.puts "imports:"
+		Enum.each Tuple.to_list(module.imports), fn import ->
+			IO.puts "#{import.mod}:#{import.import} #{import.type}"
+		end
+	end
+
 	def varint_size(<<x, rest :: binary>>) when x < 128 do
 		{x, rest}
 	end
@@ -132,7 +141,7 @@ defmodule Windtrap do
 
 	defp decode_imports(module) do
 		section = module.sections[@section_imports_id]
-		imports = import_vec(section)
+		{imports, ""} = import_vec(section)
 		
 		Map.put(module, :imports, imports)
 	end

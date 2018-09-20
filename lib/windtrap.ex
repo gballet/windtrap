@@ -8,6 +8,7 @@ defmodule Windtrap do
 	@section_types_id 1
 	@section_imports_id 2
 	@section_function_id 3
+	@section_code_id 10
 
 	@doc """
 	Decode a wasm binary.
@@ -191,6 +192,20 @@ defmodule Windtrap do
 	defp decode_export(module), do: module
 	defp decode_start(module), do: module
 	defp decode_element(module), do: module
-	defp decode_code(module), do: module
+
+	defp vec_code(v, 0, ""), do: v
+	defp vec_code(v, n, <<payload::binary>>) do
+		{size, r} = varint_size(payload)
+		<<code_and_locals::binary-size(size), left::binary>> = r
+		{nlocals, <<r2::binary>>} = varint_size(code_and_locals)
+		<<locals::binary-size(nlocals), code::binary>> = r2
+		vec_code(Tuple.append(v, %{num_locals: nlocals, locals: locals, code: Windtrap.Disassembler.disassemble(%{}, 0, code)}), n-1, left)
+	end
+	defp decode_code(module) do
+		section = module.sections[@section_code_id]
+		{n, vecdata} = varint_size(section)
+		codes = vec_code({}, n, vecdata)
+		Map.put(module, :codes, codes)
+	end
 	defp decode_data(module), do: module
 end

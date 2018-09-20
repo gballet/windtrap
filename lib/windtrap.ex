@@ -7,6 +7,7 @@ defmodule Windtrap do
 
 	@section_types_id 1
 	@section_imports_id 2
+	@section_function_id 3
 
 	@doc """
 	Decode a wasm binary.
@@ -35,12 +36,35 @@ defmodule Windtrap do
 	end
 
 	def dump module do
-		IO.puts "The module contains #{Enum.count(module.sections)} sections"
-		
-		IO.puts "imports:"
-		Enum.each Tuple.to_list(module.imports), fn import ->
-			IO.puts "#{import.mod}:#{import.import} #{import.type}"
+		types = Enum.reduce Tuple.to_list(module.types), "", fn {ins, outs}, acc ->
+			acc <> "#{inspect ins} -> #{inspect outs}\n"
 		end
+
+		mmodsize = Tuple.to_list(module.imports) |> Enum.map(fn import -> String.length(import.mod) end) |> Enum.max
+		mnamesize = Tuple.to_list(module.imports) |> Enum.map(fn import -> String.length(import.import) end) |> Enum.max
+
+		imports = Enum.reduce Tuple.to_list(module.imports), "", fn import, acc ->
+			modspaces = String.duplicate(" ", 1+mmodsize-String.length(import.mod))
+			namespaces = String.duplicate(" ", 1+mnamesize-String.length(import.import))
+			acc <> "#{import.mod}#{modspaces}:#{import.import}#{namespaces}#{import.type}\n"
+		end
+
+		ftypes = Enum.reduce Enum.with_index(Tuple.to_list(module.functions)), "", fn {fidx, tidx}, acc ->
+			acc <> "$f#{tidx}: #{inspect(elem(module.types, fidx))}\n"
+		end
+
+		IO.puts """
+		The module contains #{Enum.count(module.sections)} sections
+
+		Types:
+		#{types}
+
+		Imports:
+		#{imports}
+
+		Function types:
+		#{ftypes}
+		"""
 	end
 
 	def varint_size(<<x, rest :: binary>>) when x < 128 do
@@ -136,7 +160,8 @@ defmodule Windtrap do
 
 	defp decode_custom(module), do: module
 	defp decode_types(module) do
-		Map.put(module, :types, vec(module.sections[@section_types_id]))
+		{types, ""} = vec(module.sections[@section_types_id])
+		Map.put(module, :types, types)
 	end
 
 	defp decode_imports(module) do
@@ -146,8 +171,16 @@ defmodule Windtrap do
 		Map.put(module, :imports, imports)
 	end
 
+	defp vec_functions(v, 0, ""), do: v
+	defp vec_functions(v, n, <<payload::binary>>) do
+		{idx, rest} = varint_size(payload)
+		vec_functions(Tuple.append(v, idx), n-1, rest)
+	end
 	defp decode_functions(module) do
-		module
+		section = module.sections[@section_function_id]
+		{n, vecdata} = varint_size(section)
+		indices = vec_functions({}, n, vecdata)
+		Map.put(module, :functions, indices)
 	end
 
 	defp decode_table(module) do

@@ -72,6 +72,13 @@ defmodule Windtrap.Disassembler do
 		0x8A => :i64_rotr,
 	}
 
+	@memory_instructions %{
+		0x28 => :i32_load,
+		0x29 => :i64_load,
+		0x2A => :f32_load,
+		0x36 => :i32_store,
+	}
+
 		defp blocktype(0x40), do: :void
 	defp blocktype(0x7c), do: :f64
 	defp blocktype(0x7d), do: :f32
@@ -95,16 +102,23 @@ defmodule Windtrap.Disassembler do
 	end
 	def disassemble(dis, addr, <<0x23, payload::binary>>) do
 		{idx, rest} = Windtrap.varint_size(payload)
-		disassemble(Map.put(dis, addr, {:get_global, idx}), addr+String.length(payload)-String.length(rest)+1, rest)
+		disassemble(Map.put(dis, addr, {:get_global, idx}), addr+5, rest)
 	end
 	def disassemble(dis, addr, <<0x24, payload::binary>>) do
 		{idx, rest} = Windtrap.varint_size(payload)
-		disassemble(Map.put(dis, addr, {:set_global, idx}), addr+String.length(payload)-String.length(rest)+1, rest)
+		disassemble(Map.put(dis, addr, {:set_global, idx}), addr+5, rest)
+	end
+	def disassemble(dis, addr, <<const, payload::binary>>) when const in 0x28..0x3E do
+		{align, r1} = Windtrap.varint_size(payload)
+		{offset, r2} = Windtrap.varint_size(r1)
+		Map.put(dis, addr, {@memory_instructions[const], align, offset})
+		|> disassemble(addr+9, r2)
 	end
 	def disassemble(dis, addr, <<const, payload::binary>>) when const in 0x41..0x44 do
 		{val, rest} = Windtrap.varint_size(payload)
 		sym = %{0x41 => :i32_const, 0x42 => :i64_const, 0x43 => :f32_const, 0x44 => :f64_const}
-		disassemble(Map.put(dis, addr, {sym[const], val}), addr+1+String.length(payload)-String.length(rest), rest)
+		valsize = if rem(const, 2) == 1, do: 4, else: 8
+		disassemble(Map.put(dis, addr, {sym[const], val}), addr+1+valsize, rest)
 	end
 	def disassemble(dis, addr, <<numinstr, payload::binary>>) when numinstr in 0x45..0xBF, do: disassemble(Map.put(dis, addr, {@numeric_instructions[numinstr]}), addr+1, payload)
 end

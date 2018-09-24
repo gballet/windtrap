@@ -85,7 +85,7 @@ defmodule Windtrap.Disassembler do
 	defp blocktype(0x7f), do: :i32
 	defp blocktype(0x7e), do: :i64
 
-	def disassemble(dis, _, ""), do: dis
+	def disassemble(dis, addr, ""), do: {dis, addr}
 	def disassemble(dis, addr, <<0, payload::binary>>), do: disassemble(Map.put(dis, addr, {:unreachable}), addr+1, payload)
 	def disassemble(dis, addr, <<1, payload::binary>>), do: disassemble(Map.put(dis, addr, {:nop}), addr+1, payload)
 	def disassemble(dis, addr, <<2, payload::binary>>) do

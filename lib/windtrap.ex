@@ -15,11 +15,10 @@ defmodule Windtrap do
 
 	## Examples
 
-	  iex> %Windtrap.Module{} = Windtrap.decode("filename")
+	  iex> %Windtrap.Module{} = Windtrap.decode("wasm data")
 	  %Windtrap.Module{}
 	"""
-	def decode(filename) do
-		{:ok, data} = File.read(filename)
+	def decode(data) do
 		data
 		|> decode_header
 		|> decode_custom
@@ -34,6 +33,11 @@ defmodule Windtrap do
 		|> decode_element
 		|> decode_code
 		|> decode_data
+	end
+
+	def decode_file filename do
+		{:ok, data} = File.read(filename)
+		decode(data)
 	end
 
 	def dump module do
@@ -193,18 +197,19 @@ defmodule Windtrap do
 	defp decode_start(module), do: module
 	defp decode_element(module), do: module
 
-	defp vec_code(v, 0, ""), do: v
-	defp vec_code(v, n, <<payload::binary>>) do
+	defp vec_code(v, _, 0, ""), do: v
+	defp vec_code(v, offset, n, <<payload::binary>>) do
 		{size, r} = varint_size(payload)
 		<<code_and_locals::binary-size(size), left::binary>> = r
 		{nlocals, <<r2::binary>>} = varint_size(code_and_locals)
 		<<locals::binary-size(nlocals), code::binary>> = r2
-		vec_code(Tuple.append(v, %{num_locals: nlocals, locals: locals, code: Windtrap.Disassembler.disassemble(%{}, 0, code)}), n-1, left)
+		{dis,noffset} =  Windtrap.Disassembler.disassemble(%{}, offset, code)
+		vec_code(Tuple.append(v, %{num_locals: nlocals, locals: locals, code: dis}), noffset, n-1, left)
 	end
 	defp decode_code(module) do
 		section = module.sections[@section_code_id]
 		{n, vecdata} = varint_size(section)
-		codes = vec_code({}, n, vecdata)
+		codes = vec_code({}, 0, n, vecdata)
 		Map.put(module, :codes, codes)
 	end
 	defp decode_data(module), do: module

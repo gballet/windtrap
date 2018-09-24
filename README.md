@@ -29,10 +29,10 @@ TODO
 
 ## TODO
 
-[ ] Complete section support
-[ ] Complete execution coverage
-[ ] Complete test coverage
-[ ] Code execution
-[ ] Debugger
-[ ] Hex.pm release
-[ ] GenServer version
+  - [ ] Complete section support
+  - [ ] Complete execution coverage
+  - [ ] Complete test coverage
+  - [ ] Code execution
+  - [ ] Debugger
+  - [ ] Hex.pm release
+  - [ ] GenServer version

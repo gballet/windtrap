@@ -52,8 +52,27 @@ defmodule WindtrapTest do
 		assert elem(sig, 2) == {{}, {}}
 	end
 
+	test "global module function can be decoded" do
+		m = Windtrap.decode(@binaryen_dylib_wasm)
+		assert tuple_size(m.codes) == 3
+		assert tuple_size(m.types) == 3
+		assert tuple_size(m.imports) == 5
+		assert Map.size(m.sections) == 9
+		assert [] == (Map.keys(m.sections) -- [0, 1, 2, 3, 6, 7, 9, 10, 11])
+	end
+
+	# tester imports
+	# tester locals dans code
 	test "function disassembly with increasing addresses" do
 		m = Windtrap.decode(@binaryen_dylib_wasm)
 		assert Map.has_key?(elem(m.codes, 1).code, 0) == false
+	end
+
+	test "function disassembly always ends in 0xb" do
+		m = Windtrap.decode(@binaryen_dylib_wasm)
+		Enum.map(Tuple.to_list(m.codes), fn code ->
+			lastaddr = Enum.max Map.keys code.code
+			assert {:block_return} = Map.get(code.code, lastaddr)
+		end)
 	end
 end

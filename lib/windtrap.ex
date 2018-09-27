@@ -15,29 +15,39 @@ defmodule Windtrap do
 
 	## Examples
 
-	  iex> %Windtrap.Module{} = Windtrap.decode(<<0x00, 0x61, 0x73, 0x6D, 0x01, 0x00, 0x00, 0x00, 0x01, 0x09, 0x02, 0x60, 0x02, 0x7F, 0x7F, 0x00, 0x60, 0x00, 0x00, 0x02, 0x13, 0x01, 0x08, 0x65, 0x74, 0x68, 0x65, 0x72, 0x65, 0x75, 0x6D, 0x06, 0x72, 0x65, 0x76, 0x65, 0x72, 0x74, 0x00, 0x00, 0x03, 0x02, 0x01, 0x01, 0x05, 0x03, 0x01, 0x00, 0x01, 0x07, 0x11, 0x02, 0x06, 0x6D, 0x65, 0x6D, 0x6F, 0x72, 0x79, 0x02, 0x00, 0x04, 0x6D, 0x61, 0x69, 0x6E, 0x00, 0x01, 0x0A, 0x13, 0x01, 0x11, 0x00, 0x41, 0x00, 0x41, 0xCD, 0xD7, 0x02, 0x36, 0x02, 0x00, 0x41, 0x00, 0x41, 0x7F, 0x10, 0x00, 0x0B>>)
-	  %Windtrap.Module{exports: {}, functions: {1}, imports: {%{import: "revert", index: 0, mod: "ethereum", type: :typeidx}}, sections: %{1 => <<2, 96, 2, 127, 127, 0, 96, 0, 0>>, 2 => <<1, 8, 101, 116, 104, 101, 114, 101, 117, 109, 6, 114, 101, 118, 101, 114, 116, 0, 0>>, 3 => <<1, 1>>, 5 => <<1, 0, 1>>, 7 => <<2, 6, 109, 101, 109, 111, 114, 121, 2, 0, 4, 109, 97, 105, 110, 0, 1>>, 10 => <<1, 17, 0, 65, 0, 65, 205, 215, 2, 54, 2, 0, 65, 0, 65, 127, 16, 0, 11>>}, types: {{{:i32, :i32}, {}}, {{}, {}}}, codes: {%{code: %{0 => {:i32_const, 0}, 5 => {:i32_const, 43981}, 10 => {:i32_store, 2, 0}, 19 => {:i32_const, 0}, 24 => {:i32_const, 127}, 29 => {:call, 0}, 31 => {:block_return}}, locals: "", num_locals: 0}}}
+	  iex> {:ok, %Windtrap.Module{}} = Windtrap.decode(<<0x00, 0x61, 0x73, 0x6D, 0x01, 0x00, 0x00, 0x00, 0x01, 0x09, 0x02, 0x60, 0x02, 0x7F, 0x7F, 0x00, 0x60, 0x00, 0x00, 0x02, 0x13, 0x01, 0x08, 0x65, 0x74, 0x68, 0x65, 0x72, 0x65, 0x75, 0x6D, 0x06, 0x72, 0x65, 0x76, 0x65, 0x72, 0x74, 0x00, 0x00, 0x03, 0x02, 0x01, 0x01, 0x05, 0x03, 0x01, 0x00, 0x01, 0x07, 0x11, 0x02, 0x06, 0x6D, 0x65, 0x6D, 0x6F, 0x72, 0x79, 0x02, 0x00, 0x04, 0x6D, 0x61, 0x69, 0x6E, 0x00, 0x01, 0x0A, 0x13, 0x01, 0x11, 0x00, 0x41, 0x00, 0x41, 0xCD, 0xD7, 0x02, 0x36, 0x02, 0x00, 0x41, 0x00, 0x41, 0x7F, 0x10, 0x00, 0x0B>>)
+	  {:ok, %Windtrap.Module{exports: {}, functions: {1}, imports: {%{import: "revert", index: 0, mod: "ethereum", type: :typeidx}}, sections: %{1 => <<2, 96, 2, 127, 127, 0, 96, 0, 0>>, 2 => <<1, 8, 101, 116, 104, 101, 114, 101, 117, 109, 6, 114, 101, 118, 101, 114, 116, 0, 0>>, 3 => <<1, 1>>, 5 => <<1, 0, 1>>, 7 => <<2, 6, 109, 101, 109, 111, 114, 121, 2, 0, 4, 109, 97, 105, 110, 0, 1>>, 10 => <<1, 17, 0, 65, 0, 65, 205, 215, 2, 54, 2, 0, 65, 0, 65, 127, 16, 0, 11>>}, types: {{{:i32, :i32}, {}}, {{}, {}}}, codes: {%{code: %{0 => {:i32_const, 0}, 5 => {:i32_const, 43981}, 10 => {:i32_store, 2, 0}, 19 => {:i32_const, 0}, 24 => {:i32_const, 127}, 29 => {:call, 0}, 31 => {:block_return}}, locals: "", num_locals: 0}}}}
 	"""
 	def decode(data) do
-		data
-		|> decode_header
-		|> decode_custom
-		|> decode_types
-		|> decode_imports
-		|> decode_functions
-		|> decode_table
-		|> decode_memory
-		|> decode_global
-		|> decode_export
-		|> decode_start
-		|> decode_element
-		|> decode_code
-		|> decode_data
+		try do
+			d = data
+			|> decode_header
+			|> decode_custom
+			|> decode_types
+			|> decode_imports
+			|> decode_functions
+			|> decode_table
+			|> decode_memory
+			|> decode_global
+			|> decode_export
+			|> decode_start
+			|> decode_element
+			|> decode_code
+			|> decode_data
+
+			{:ok, d}
+		rescue
+			e -> {:error, e}
+		end
+
 	end
 
 	def decode_file filename do
-		{:ok, data} = File.read(filename)
-		decode(data)
+		with {:ok, data} <- File.read(filename) do
+			decode(data)
+		else
+			x -> x
+		end
 	end
 
 	def dump module do
@@ -70,6 +80,52 @@ defmodule Windtrap do
 		Function types:
 		#{ftypes}
 		"""
+	end
+
+	@doc """
+	Load a file and resolve its imported modules.
+
+	## Parameters
+
+		* `filename` is the name of the file to be loaded
+		* `imports` is a map that contains pre-loaded imports and whose format
+			is `"module_name" => %Windtrap.Module{}`. If a module name is not
+			present in `imports`, then the console will try to load "module_name.wasm"
+			from the local directory.
+	"""
+	def load_file(filename, imports \\ %{}) do
+		with {:ok, m} <- decode_file(filename),
+				mod <- load_module(m, imports) do
+					{:ok, mod}
+			else
+				x -> x
+			end
+	end
+
+	def load_module(module, imports \\ %{}) do
+		resolved = Enum.map Tuple.to_list(module.imports), fn imprt ->
+			%{type: itype} = imprt
+			# Check that the module exists, otherwise try to load if from disk
+			with {:ok, mod} <- Map.fetch(imports, imprt.mod),
+				{:ok, %{type: ^itype, idx: eidx}} <- Map.fetch(mod.exports, imprt.import) do
+				imprt
+				|> Map.put(:resolved, true)
+				|> Map.put(:module, Map.get(imports, imprt.mod))
+				|> Map.put(:exportidx, eidx)
+			else
+				_ ->
+					with {:ok, m} <- load_file("#{imprt.mod}.wasm"),
+					{:ok, %{type: ^itype, idx: eidx}} <- Map.fetch(m.exports, imprt.name) do
+						imprt
+						|> Map.put(:resolved, true)
+						|> Map.put(:module, m)
+						|> Map.put(:exportidx, eidx)
+					else
+						_ -> throw("Could not find module #{imprt.mod}:#{imprt.import}")
+					end
+			end
+		end
+		module |> Map.put(:imports, List.to_tuple(resolved))
 	end
 
 	def varint_size(<<x, rest :: binary>>) when x < 128 do

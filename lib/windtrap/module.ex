@@ -4,5 +4,11 @@ defmodule Windtrap.Module do
 	"""
 
 	# @enforce_keys: [:types]
-	defstruct imports: {}, exports: {}, types: {}, functions: {}, sections: %{}, codes: {}
+	defstruct imports: {},
+						exports: {},
+						types: {},
+						functions: {},
+						sections: %{},
+						codes: {},
+						functions: {}
 end

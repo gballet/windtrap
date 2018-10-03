@@ -7,7 +7,7 @@ defmodule WindtrapTest do
 
 	@env_mock %{"env" => %Windtrap.Module{
 		exports: %{
-			"_puts" => %{type: :typeidx, idx: 0},
+			"_puts" => %{type: :funcidx, idx: 0},
 			"table" => %{type: :table, idx: 0 },
 			"memoryBase" => %{type: :global, idx: 0},
 			"tableBase" => %{type: :global, idx: 1},

@@ -99,7 +99,8 @@ defmodule WindtrapTest do
 			assert %{resolved: true, exportidx: idx} = imprt
 			assert is_number(idx)
 
-			assert imprt.type == @env_mock[imprt.mod].exports[imprt.import].type
+			etype = @env_mock[imprt.mod].exports[imprt.import].type
+			assert imprt.type == if etype == :funcidx, do: :typeidx, else: etype
 		end)
 	end
 end

@@ -8,6 +8,12 @@ defmodule Windtrap do
 	@section_types_id 1
 	@section_imports_id 2
 	@section_function_id 3
+	@section_table_id 4
+	@section_memory_id 5
+	@section_globals_id 6
+	@section_exports_id 7
+	@section_start_id 8
+	@section_element_id 9
 	@section_code_id 10
 
 	@doc """
@@ -16,7 +22,7 @@ defmodule Windtrap do
 	## Examples
 
 	  iex> {:ok, %Windtrap.Module{}} = Windtrap.decode(<<0x00, 0x61, 0x73, 0x6D, 0x01, 0x00, 0x00, 0x00, 0x01, 0x09, 0x02, 0x60, 0x02, 0x7F, 0x7F, 0x00, 0x60, 0x00, 0x00, 0x02, 0x13, 0x01, 0x08, 0x65, 0x74, 0x68, 0x65, 0x72, 0x65, 0x75, 0x6D, 0x06, 0x72, 0x65, 0x76, 0x65, 0x72, 0x74, 0x00, 0x00, 0x03, 0x02, 0x01, 0x01, 0x05, 0x03, 0x01, 0x00, 0x01, 0x07, 0x11, 0x02, 0x06, 0x6D, 0x65, 0x6D, 0x6F, 0x72, 0x79, 0x02, 0x00, 0x04, 0x6D, 0x61, 0x69, 0x6E, 0x00, 0x01, 0x0A, 0x13, 0x01, 0x11, 0x00, 0x41, 0x00, 0x41, 0xCD, 0xD7, 0x02, 0x36, 0x02, 0x00, 0x41, 0x00, 0x41, 0x7F, 0x10, 0x00, 0x0B>>)
-	  {:ok, %Windtrap.Module{exports: {}, functions: {1}, imports: {%{import: "revert", index: 0, mod: "ethereum", type: :typeidx}}, sections: %{1 => <<2, 96, 2, 127, 127, 0, 96, 0, 0>>, 2 => <<1, 8, 101, 116, 104, 101, 114, 101, 117, 109, 6, 114, 101, 118, 101, 114, 116, 0, 0>>, 3 => <<1, 1>>, 5 => <<1, 0, 1>>, 7 => <<2, 6, 109, 101, 109, 111, 114, 121, 2, 0, 4, 109, 97, 105, 110, 0, 1>>, 10 => <<1, 17, 0, 65, 0, 65, 205, 215, 2, 54, 2, 0, 65, 0, 65, 127, 16, 0, 11>>}, types: {{{:i32, :i32}, {}}, {{}, {}}}, codes: {%{code: %{0 => {:i32_const, 0}, 5 => {:i32_const, 43981}, 10 => {:"i32.store", 2, 0}, 19 => {:i32_const, 0}, 24 => {:i32_const, 127}, 29 => {:call, 0}, 31 => {:block_return}}, locals: "", num_locals: 0}}}}
+	  {:ok, %Windtrap.Module{exports: {%{export: "memory", index: 0, type: :memidx}, %{export: "main", index: 1, type: :funcidx}}, functions: {1}, imports: {%{import: "revert", index: 0, mod: "ethereum", type: :typeidx}}, sections: %{1 => <<2, 96, 2, 127, 127, 0, 96, 0, 0>>, 2 => <<1, 8, 101, 116, 104, 101, 114, 101, 117, 109, 6, 114, 101, 118, 101, 114, 116, 0, 0>>, 3 => <<1, 1>>, 5 => <<1, 0, 1>>, 7 => <<2, 6, 109, 101, 109, 111, 114, 121, 2, 0, 4, 109, 97, 105, 110, 0, 1>>, 10 => <<1, 17, 0, 65, 0, 65, 205, 215, 2, 54, 2, 0, 65, 0, 65, 127, 16, 0, 11>>}, types: {{{:i32, :i32}, {}}, {{}, {}}}, codes: {%{code: %{0 => {:"i32.const", 0}, 5 => {:"i32.const", 43981}, 10 => {:"i32.store", 2, 0}, 19 => {:"i32.const", 0}, 24 => {:"i32.const", 127}, 29 => {:call, 0}, 31 => {:block_return}}, locals: "", num_locals: 0}}}}
 	"""
 	def decode(data) do
 		try do
@@ -102,12 +108,39 @@ defmodule Windtrap do
 			end
 	end
 
+	@doc """
+	Load a module's dependencies. A series of pre-resolved modules
+	can be passed as an optional argument. If they can not be found
+	there, then the function will try to load them from disk.
+
+	## Parameters
+
+		* `module` is the module whose dependencies will be loaded
+		* `imports` is an optional hash whose keys are module names
+			 and values are the actual, pre-loaded modules.
+
+	## Returns
+
+	An new version of the module, with the following updated
+	fields:
+
+		* `:function_index` will point to a list of all functions
+			known to the module.
+		* `:imports` will have its function entries updated to
+			contain a `:resolved` field set to `true`, as well as
+			the `:module` name and the index of the export in that
+			module.
+	"""
 	def load_module(module, imports \\ %{}) do
 		resolved = Enum.map Tuple.to_list(module.imports), fn imprt ->
 			%{type: itype} = imprt
+			# export and import entries have a slight discrepancy, make
+			# sure all equality tests match.
+			etype = if itype == :typeidx, do: :funcidx, else: itype
+
 			# Check that the module exists, otherwise try to load if from disk
 			with {:ok, mod} <- Map.fetch(imports, imprt.mod),
-				{:ok, %{type: ^itype, idx: eidx}} <- Map.fetch(mod.exports, imprt.import) do
+				{:ok, %{type: ^etype, idx: eidx}} <- Map.fetch(mod.exports, imprt.import) do
 				imprt
 				|> Map.put(:resolved, true)
 				|> Map.put(:module, Map.get(imports, imprt.mod))
@@ -115,17 +148,18 @@ defmodule Windtrap do
 			else
 				_ ->
 					with {:ok, m} <- load_file("#{imprt.mod}.wasm"),
-					{:ok, %{type: ^itype, idx: eidx}} <- Map.fetch(m.exports, imprt.name) do
+					{:ok, %{type: ^etype, idx: eidx}} <- Map.fetch(m.exports, imprt.name) do
 						imprt
 						|> Map.put(:resolved, true)
 						|> Map.put(:module, m)
 						|> Map.put(:exportidx, eidx)
 					else
-						_ -> throw("Could not find module #{imprt.mod}:#{imprt.import}")
+						_ -> throw("Could not find a module named '#{imprt.mod}'' containing export '#{imprt.import}'")
 					end
 			end
 		end
-		module |> Map.put(:imports, List.to_tuple(resolved))
+		module
+		|> Map.put(:imports, List.to_tuple(resolved))
 	end
 
 	def varint_size(<<x, rest :: binary>>) when x < 128 do
@@ -200,6 +234,27 @@ defmodule Windtrap do
 		{Map.merge(t, %{type: :table, min: min, max: max}), s}
 	end
 
+	defp exportdesc(0), do: :funcidx
+	defp exportdesc(1), do: :tableidx
+	defp exportdesc(2), do: :memidx
+	defp exportdesc(3), do: :globalidx
+	def export_vec(<<payload :: binary>>) do
+		{size, rest} = varint_size(payload)
+		IO.puts size
+		export_vec_unfurl({}, size, rest)
+	end
+	defp export_vec_unfurl(v, s, <<payload :: binary>>) when s > 0 do
+		{item, rest} = export_vec_item payload
+		export_vec_unfurl Tuple.append(v, item), (s-1), rest
+	end
+	defp export_vec_unfurl(v, 0, r), do: {v, r}
+	defp export_vec_item(<<p::binary>>) do
+		{size, rest} = varint_size(p)
+		<<name::binary-size(size), type, q::binary>> = rest
+		{idx, r} = varint_size(q)
+		{%{export: name, type: exportdesc(type), index: idx}, r}
+	end
+
 	defp decode_section(module, <<>>) do
 		module
 	end
@@ -249,7 +304,12 @@ defmodule Windtrap do
 	end
 	defp decode_memory(module), do: module
 	defp decode_global(module), do: module
-	defp decode_export(module), do: module
+	defp decode_export(module) do
+		section = module.sections[@section_exports_id]
+		{exports, ""} = export_vec(section)
+
+		module |> Map.put(:exports, exports)
+	end
 	defp decode_start(module), do: module
 	defp decode_element(module), do: module
 

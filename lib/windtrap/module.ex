@@ -7,8 +7,11 @@ defmodule Windtrap.Module do
 	defstruct imports: {},
 						exports: {},
 						types: {},
+						# types of each function implemented by this module
 						functions: {},
 						sections: %{},
 						codes: {},
-						functions: {}
+						# types of each imported function, followed by those of
+						# functions implemented by this module
+						function_index: {}
 end

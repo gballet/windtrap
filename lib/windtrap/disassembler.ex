@@ -20,9 +20,18 @@ defmodule Windtrap.Disassembler do
 		"i32.wrap/i64", "i32.trunc_s/f32", "i32.trunc_u/f32", "i32.trunc_s/f64", "i32.trunc_u/f64", "i64.extend_s/i32", "i64.extend_u/i32", "i64.trunc_s/f32", "i64.trunc_u/f32", "i64.trunc_s/f64", "i64.trunc_u/f64", "f32.convert_s/i32", "f32.convert_u/i32", "f32.convert_s/i64", "f32.convert_u/i64", "f32.demote/f64", "f64.convert_s/i32", "f64.convert_u/i32", "f64.convert_s/i64", "f64.convert_u/i64", "f64.promote/f32", "i32.reinterpret/f32", "i64.reinterpret/f64", "f32.reinterpret/i32", "f64.reinterpret/i64",
 	], %{}, fn sym, acc -> Map.put(acc, 0x45 + length(Map.keys(acc)), String.to_atom(sym)) end
 
+	# TODO define in a macro that is only valid when building tests
+	if Mix.env() == :test do
+		def get_numeric_instructions, do: @numeric_instructions
+	end
+
 	@memory_instructions Enum.reduce [
 		"i32.load", "i64.load", "f32.load", "f64.load", "i32.load8_s", "i32.load8_u", "i32.load16_s", "i32.load16_u", "i64.load8_s", "i64.load8_u", "i64.load16_s", "i64.load16_u", "i64.load32_s", "i64.load32_u", "i32.store", "i64.store", "f32.store",  "f64.store", "i32.store8", "i32.store16", "i64.store8", "i64.store16", "i64.store32", "memory.size", "memory.grow"
 	], %{}, fn sym, acc -> Map.put(acc, 0x28 + length(Map.keys(acc)), String.to_atom(sym)) end
+
+	if Mix.env() == :test do
+		def get_memory_instructions, do: @memory_instructions
+	end
 
 	@parametric_instructions %{0x1a => :drop, 0x1b => :select}
 
@@ -31,6 +40,13 @@ defmodule Windtrap.Disassembler do
 	@variable_instructions Enum.reduce [
 		"get_local", "set_local", "tee_local", "get_global", "set_global"
 	], %{}, fn sym, acc -> Map.put(acc, 0x20 + length(Map.keys(acc)), String.to_atom(sym)) end
+
+	@const_instructions %{
+		0x41 => :"i32.const",
+		0x42 => :"i64.const",
+		0x43 => :"f32.const",
+		0x44 => :"f64.const"
+	}
 
 	defp blocktype(0x40), do: :void
 	defp blocktype(0x7c), do: :f64

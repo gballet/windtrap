@@ -240,7 +240,6 @@ defmodule Windtrap do
 	defp exportdesc(3), do: :globalidx
 	def export_vec(<<payload :: binary>>) do
 		{size, rest} = varint_size(payload)
-		IO.puts size
 		export_vec_unfurl({}, size, rest)
 	end
 	defp export_vec_unfurl(v, s, <<payload :: binary>>) when s > 0 do
@@ -283,8 +282,8 @@ defmodule Windtrap do
 	defp decode_imports(module) do
 		section = module.sections[@section_imports_id]
 		{imports, ""} = import_vec(section)
-		
-		Map.put(module, :imports, imports)
+
+		module |> Map.put(:imports, imports)
 	end
 
 	defp vec_functions(v, 0, ""), do: v

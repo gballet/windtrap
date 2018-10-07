@@ -160,6 +160,7 @@ defmodule Windtrap do
 		end
 		module
 		|> Map.put(:imports, List.to_tuple(resolved))
+		|> Map.put(:function_index, indices)
 	end
 
 	def varint_size(<<x, rest :: binary>>) when x < 128 do
@@ -349,7 +350,7 @@ defmodule Windtrap do
 		<<code_and_locals::binary-size(size), left::binary>> = r
 		{nlocals, <<r2::binary>>} = varint_size(code_and_locals)
 		<<locals::binary-size(nlocals), code::binary>> = r2
-		{dis,noffset} =  Windtrap.Disassembler.disassemble(code, offset, %{})
+		{:ok, {dis,noffset}, ""} =  Windtrap.Disassembler.disassemble(code, offset, %{})
 		vec_code(Tuple.append(v, %{num_locals: nlocals, locals: locals, code: dis}), noffset, n-1, left)
 	end
 	defp decode_code(module) do

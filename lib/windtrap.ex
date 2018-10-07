@@ -302,7 +302,38 @@ defmodule Windtrap do
 		module
 	end
 	defp decode_memory(module), do: module
-	defp decode_global(module), do: module
+
+	defp valtype(0x7f), do: :i32
+	defp valtype(0x7e), do: :i64
+	defp valtype(0x7d), do: :f32
+	defp valtype(0x7c), do: :f64
+	defp globaltype(0), do: :const
+	defp globaltype(1), do: :var
+	defp global_vec_item(t, 0, ""), do: t
+	defp global_vec_item(t, n, <<p::binary>>) do
+		<<vt, mut, q::binary>>= p
+
+		# Disassemble the init code of the global
+		{:ok, {dis, _}, r} = Windtrap.Disassembler.disassemble(q, 0, %{})
+
+		# Execute it to get the init value
+		[initval|_] = Windtrap.VM.exec(%Windtrap.VM{}, %{code: dis}).stack
+
+		t
+		|> Tuple.append(%{type: valtype(vt), mut: globaltype(mut), expr: dis, value: initval})
+		|> global_vec_item(n-1, r)
+	end
+	defp decode_global(module) do
+		if Map.has_key?(module.sections, @section_globals_id) do
+			section = module.sections[@section_globals_id]
+			{nglobals, data} = varint_size(section)
+			globals = global_vec_item {}, nglobals, data
+			Map.put(module, :globals, globals)
+		else
+			module
+		end
+	end
+
 	defp decode_export(module) do
 		section = module.sections[@section_exports_id]
 		{exports, ""} = export_vec(section)

@@ -158,6 +158,25 @@ defmodule Windtrap do
 					end
 			end
 		end
+
+		# Build the function index; it has two parts:
+		#  1. The first part is a list of reference to all
+		#     imported functions. They follow the order
+		#     they are declared in the `import` section.
+		#  2. The second part is a list of references to
+		#     functions in the module. They follow the order
+		#     that they are declared in the `code` section.
+		indices = (resolved # import part
+		|> Enum.filter(fn imprt -> imprt.type == :typeidx end)
+		|> Enum.map(fn imprt -> %{module: imprt.module, exportidx: imprt.exportidx, name: imprt.import} end)
+		) ++ (module.codes # code part
+			|> Tuple.to_list
+			|> Enum.with_index
+			|> Enum.map(fn {_, idx} ->
+			%{fidx: idx}
+			end)
+		)	|> List.to_tuple
+
 		module
 		|> Map.put(:imports, List.to_tuple(resolved))
 		|> Map.put(:function_index, indices)

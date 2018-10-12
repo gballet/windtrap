@@ -13,5 +13,6 @@ defmodule Windtrap.Module do
 						codes: {},
 						# types of each imported function, followed by those of
 						# functions implemented by this module
-						function_index: {}
+						function_index: {},
+						memory: {}
 end

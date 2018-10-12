@@ -300,9 +300,28 @@ defmodule Windtrap do
 	end
 
 	defp decode_table(module) do
+			module
+	end
+	defp vec_memory(v, 0, ""), do: v
+	defp vec_memory(v, n, <<type, p::binary>>) when type in 0..1 do
+		{min, q} = varint_size(p)
+		if type == 1 do
+			{max, r} = varint_size(q)
+			vec_memory Tuple.append(v, %{min: min, max: max}), n-1, r
+		else
+			vec_memory Tuple.append(v, %{min: min}), n-1, q
+		end
+	end
+	defp decode_memory(module) do
+		section = module.sections[@section_memory_id]
+		if not is_nil(section) do
+			{n, vecdata} = varint_size(section)
+			memories = vec_memory({}, n, vecdata)
+			Map.put(module, :memory, memories)
+		else
 		module
 	end
-	defp decode_memory(module), do: module
+	end
 
 	defp valtype(0x7f), do: :i32
 	defp valtype(0x7e), do: :i64

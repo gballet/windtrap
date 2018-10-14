@@ -318,9 +318,27 @@ defmodule Windtrap do
 		Map.put(module, :functions, indices)
 	end
 
+	defp vec_table(v, 0, ""), do: v
+	defp vec_table(v, n, <<0x70, type, p::binary>>) when type in 0..1 do
+		{min, q} = varint_size(p)
+		if type == 1 do
+			{max, r} = varint_size(q)
+			vec_table Tuple.append(v, %{min: min, max: max}), n-1, r
+		else
+			vec_table Tuple.append(v, %{min: min}), n-1, q
+		end
+	end
 	defp decode_table(module) do
+		section = module.sections[@section_table_id]
+		if not is_nil(section) do
+			{n, vecdata} = varint_size(section)
+			tables = vec_table({}, n, vecdata)
+			Map.put(module, :table, tables)
+		else
 			module
 	end
+	end
+
 	defp vec_memory(v, 0, ""), do: v
 	defp vec_memory(v, n, <<type, p::binary>>) when type in 0..1 do
 		{min, q} = varint_size(p)

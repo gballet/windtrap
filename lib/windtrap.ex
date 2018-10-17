@@ -397,8 +397,17 @@ defmodule Windtrap do
 
 		module |> Map.put(:exports, exports)
 	end
-	defp decode_start(module), do: module
-	defp decode_element(module), do: module
+
+	defp decode_start(module) do
+		section = module.sections[@section_start_id]
+		if not is_nil(section) do
+			{funcidx, ""} = varint_size(section)
+			module
+			|> Map.put(:start, funcidx)
+		else
+			module
+		end
+	end
 
 	defp vec_code(v, _, 0, ""), do: v
 	defp vec_code(v, offset, n, <<payload::binary>>) do

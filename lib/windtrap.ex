@@ -409,6 +409,27 @@ defmodule Windtrap do
 		end
 	end
 
+	defp vec_element(v, 0, ""), do: v
+	defp vec_element(v, n, <<p::binary>>) do
+		{tidx, q} = varint_size(p)
+		{:ok, expr, r} = Windtrap.Disassembler.disassemble(q, 0, {})
+		# Ignore the y* for now
+		v
+		|> Tuple.append(%{tableidx: tidx, expr: expr, y: []})
+		|> vec_element(n-1, r)
+	end
+	defp decode_element(module) do
+		section = module.sections[@section_start_id]
+		unless is_nil(section) do
+			{nelems, vecdata} = varint_size(section)
+			{elements, ""} = vec_element({}, nelems, vecdata)
+
+			module
+		else
+			module
+		end
+	end
+
 	defp vec_code(v, _, 0, ""), do: v
 	defp vec_code(v, offset, n, <<payload::binary>>) do
 		{size, r} = varint_size(payload)

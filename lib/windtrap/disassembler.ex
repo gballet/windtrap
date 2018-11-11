@@ -111,7 +111,8 @@ defmodule Windtrap.Disassembler do
 	end
 	defp disassemble_instr(dis, addr, <<0x10, payload::binary>>, n) do
 		{idx, rest} = Windtrap.varint_size(payload)
-		disassemble_instr(Map.put(dis, addr, {:call, idx}), addr+String.length(payload)-String.length(rest)+1, rest, n)
+		#disassemble_instr(Map.put(dis, addr, {:call, idx}), addr+String.length(payload)-String.length(rest)+1, rest, n)
+		disassemble_instr(Map.put(dis, addr, {:call, idx}), addr+5, rest, n)
 	end
 	defp disassemble_instr(dis, addr, <<param, payload::binary>>, n) when param in 0x1a..0x1b do
 		disassemble_instr(Map.put(dis, addr, {@parametric_instructions[param]}), addr+1, payload, n)

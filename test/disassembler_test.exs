@@ -5,7 +5,7 @@ defmodule DisassemblerTest do
   @sample_func_code <<2, 64, 35, 0, 65, 16, 106, 36, 2, 35, 2, 65, 128, 128, 192, 2, 106, 36, 3, 16, 2, 11, 11>>
 
   test "disassemble a simple function" do
-    assert {:ok, {dis, 38}, ""} = Windtrap.Disassembler.disassemble(@sample_func_code, 0, %{})
+    assert {:ok, {dis, 41}, ""} = Windtrap.Disassembler.disassemble(@sample_func_code, 0, %{})
     assert Map.size(dis) == 12
   end
 

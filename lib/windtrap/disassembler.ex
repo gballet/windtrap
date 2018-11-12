@@ -8,6 +8,8 @@ defmodule Windtrap.Disassembler do
 		{:ok, {%{0 => {:get_global, 653}, 5 => {:block_return}}, 6}, ""}
 	"""
 
+	import Windtrap.Varint
+
 	@numeric_instructions Enum.reduce [
 		"i32.eqz", "i32.eq", "i32.ne", "i32.lt_s", "i32.lt_u", "i32.gt_s", "i32.gt_u", "i32.le_s", "i32.le_u", "i32.ge_s", "i32.ge_u",
     "i64.eqz", "i64.eq", "i64.ne", "i64.lt_s", "i64.lt_u", "i64.gt_s", "i64.gt_u", "i64.le_s", "i64.le_u", "i64.ge_s", "i64.ge_u",
@@ -83,25 +85,25 @@ defmodule Windtrap.Disassembler do
 	defp disassemble_instr(dis, addr, <<0, payload::binary>>, n), do: disassemble_instr(Map.put(dis, addr, {:unreachable}), addr+1, payload, n)
 	defp disassemble_instr(dis, addr, <<1, payload::binary>>, n), do: disassemble_instr(Map.put(dis, addr, {:nop}), addr+1, payload, n)
 	defp disassemble_instr(dis, addr, <<2, payload::binary>>, n) do
-		{bt, rest} = Windtrap.varint_size(payload)
+		{bt, rest} = varint(payload)
 		dis
 		|> Map.put(addr, {:block, blocktype(bt)})
 		|> disassemble_instr(addr+2, rest, [:block | n])
 	end
 	defp disassemble_instr(dis, addr, <<3, payload::binary>>, n) do
-		{bt, rest} = Windtrap.varint_size(payload)
+		{bt, rest} = varint(payload)
 		dis
 		|> Map.put(addr, {:loop, blocktype(bt)})
 		|> disassemble_instr(addr+1, rest, [:loop | n])
 	end
 	defp disassemble_instr(dis, addr, <<4, payload::binary>>, n) do
-		{bt, rest} = Windtrap.varint_size(payload)
+		{bt, rest} = varint(payload)
 		dis
 		|> Map.put(addr, {:if, blocktype(bt)})
 		|> disassemble_instr(addr+1, rest, [:if | n])
 	end
 	defp disassemble_instr(dis, addr, <<5, payload::binary>>, [:if | _] = n) do
-		{bt, rest} = Windtrap.varint_size(payload)
+		{bt, rest} = varint(payload)
 		dis
 		|> Map.put(addr, {:else, blocktype(bt)})
 		|> disassemble_instr(addr+1, rest, n)
@@ -110,7 +112,7 @@ defmodule Windtrap.Disassembler do
 		disassemble_instr(Map.put(dis, addr, {:block_return}), addr+1, payload, n)
 	end
 	defp disassemble_instr(dis, addr, <<0x10, payload::binary>>, n) do
-		{idx, rest} = Windtrap.varint_size(payload)
+		{idx, rest} = varint(payload)
 		#disassemble_instr(Map.put(dis, addr, {:call, idx}), addr+String.length(payload)-String.length(rest)+1, rest, n)
 		disassemble_instr(Map.put(dis, addr, {:call, idx}), addr+5, rest, n)
 	end
@@ -118,17 +120,17 @@ defmodule Windtrap.Disassembler do
 		disassemble_instr(Map.put(dis, addr, {@parametric_instructions[param]}), addr+1, payload, n)
 	end
 	defp disassemble_instr(dis, addr, <<varinstr, payload::binary>>, n) when varinstr in 0x20..0x24 do
-		{idx, rest} = Windtrap.varint_size(payload)
+		{idx, rest} = varint(payload)
 		disassemble_instr(Map.put(dis, addr, {@variable_instructions[varinstr], idx}), addr+5, rest, n)
 	end
 	defp disassemble_instr(dis, addr, <<const, payload::binary>>, n) when const in 0x28..0x3E do
-		{align, r1} = Windtrap.varint_size(payload)
-		{offset, r2} = Windtrap.varint_size(r1)
+		{align, r1} = varint(payload)
+		{offset, r2} = varint(r1)
 		Map.put(dis, addr, {@memory_instructions[const], align, offset})
 		|> disassemble_instr(addr+9, r2, n)
 	end
 	defp disassemble_instr(dis, addr, <<const, payload::binary>>, n) when const in 0x41..0x44 do
-		{val, rest} = Windtrap.varint_size(payload)
+		{val, rest} = varint(payload)
 		valsize = if rem(const, 2) == 1, do: 4, else: 8
 		disassemble_instr(Map.put(dis, addr, {@const_instructions[const], val}), addr+1+valsize, rest, n)
 	end

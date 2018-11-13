@@ -242,6 +242,20 @@ defmodule Windtrap do
 		<<iname::binary-size(isize), q::binary>> = irest
 		import_vec_item_type %{mod: mname, import: iname}, q
 	end
+	defp vec_item(:data, <<0, instr, eb :: binary>>) when instr in [0x23, 0x41] do
+		# eb comes from the spec: it contains a constant expression
+		# (hence the 0x23 as this has to be i32.const since an offset
+		# in 32-bit memory can only be a 32 bit integer) followed by
+		# an array of bytes containing the initial state of the memory
+		# at that offset.
+		# Il y a encore un probleme: c'est pas forcement un int et c'est
+		# pas forcement valide
+		{offset, <<0xb, initvec_and_rest :: binary>>} = varint eb
+		{initsize, r} = varint initvec_and_rest
+		<<init :: binary-size(initsize) , rest :: binary>> = r
+		{{offset, init, instr == 0x23}, rest}
+	end
+
 	defp import_vec_item_type(t, <<0x3, type, constvar, p::binary>>) do
 		{Map.merge(t, %{type: :global, const: constvar == 0, valtype: type}), p}
 	end
@@ -441,6 +455,15 @@ defmodule Windtrap do
 			module
 		end
 	end
+	defp decode_data(module) do
+		section = module.sections[@section_data_id]
+		IO.puts inspect section
+		unless is_nil(section) do
+			{data, ""} = vec(:data, section)
+			Map.put(module, :data, data)
+		else
+			module
+		end
 	end
-	defp decode_data(module), do: module
+
 end

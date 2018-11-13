@@ -80,6 +80,31 @@ defmodule WindtrapTest do
 	# ```
 	@wasm_with_memory <<0, 97, 115, 109, 1, 0, 0, 0, 1, 4, 1, 96, 0, 0, 3, 2, 1, 0, 5, 3, 1, 0, 16, 7, 17, 2, 6, 109, 101, 109, 111, 114, 121, 2, 0, 4, 109, 97, 105, 110, 0, 0, 8, 1, 0, 10, 5, 1, 3, 0, 1, 11, 11, 9, 1, 0, 65, 128, 4, 11, 2, 190, 239>>
 
+	# A smaller program taken from the Ethereum Environment Interface
+	# test suite.
+	#
+	# ```wast
+  # (module
+	#  (type $0 (func (param i32 i32)))
+	#  (type $1 (func))
+	#  (import "ethereum" "revert" (func $fimport$0 (param i32 i32)))
+	#  (memory $0 1)
+	#  (export "memory" (memory $0))
+	#  (export "main" (func $0))
+	#  (func $0 (; 1 ;) (type $1)
+	#   (i32.store
+	#    (i32.const 0)
+	#    (i32.const 43981)
+	#   )
+	#   (call $fimport$0
+	#    (i32.const 0)
+	#    (i32.const -1)
+	#   )
+	#  )
+	# )
+	# ```
+	@wasm_eei_test <<0x00, 0x61, 0x73, 0x6D, 0x01, 0x00, 0x00, 0x00, 0x01, 0x09, 0x02, 0x60, 0x02, 0x7F, 0x7F, 0x00, 0x60, 0x00, 0x00, 0x02, 0x13, 0x01, 0x08, 0x65, 0x74, 0x68, 0x65, 0x72, 0x65, 0x75, 0x6D, 0x06, 0x72, 0x65, 0x76, 0x65, 0x72, 0x74, 0x00, 0x00, 0x03, 0x02, 0x01, 0x01, 0x05, 0x03, 0x01, 0x00, 0x01, 0x07, 0x11, 0x02, 0x06, 0x6D, 0x65, 0x6D, 0x6F, 0x72, 0x79, 0x02, 0x00, 0x04, 0x6D, 0x61, 0x69, 0x6E, 0x00, 0x01, 0x0A, 0x13, 0x01, 0x11, 0x00, 0x41, 0x00, 0x41, 0xCD, 0xD7, 0x02, 0x36, 0x02, 0x00, 0x41, 0x00, 0x41, 0x7F, 0x10, 0x00, 0x0B>>
+
 	@env_mock %{"env" => %Windtrap.Module{
 		exports: %{
 			"_puts" => %{type: :funcidx, idx: 0},
@@ -220,6 +245,16 @@ defmodule WindtrapTest do
 		# section that has 0 elements.
 		{:ok, m} = Windtrap.decode(@binaryen_dylib_wasm)
 		assert {} = m.elements
+	end
+
+	test "data section contains 'hello, world!'" do
+		{:ok, m} = Windtrap.decode(@binaryen_dylib_wasm)
+		assert {0, "hello, world!", true} == elem(m.data, 0)
+	end
+
+	test "can open a file with a missing data section" do
+		{:ok, m} = Windtrap.decode(@wasm_eei_test)
+		assert !Map.has_key?(m, :data)
 	end
 
 	# tester locals dans code

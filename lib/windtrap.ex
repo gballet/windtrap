@@ -479,7 +479,6 @@ defmodule Windtrap do
 	end
 	defp decode_data(module) do
 		section = module.sections[@section_data_id]
-		IO.puts inspect section
 		unless is_nil(section) do
 			{data, ""} = vec(:data, section)
 			Map.put(module, :data, data)

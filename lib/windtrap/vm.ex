@@ -39,7 +39,7 @@ defmodule Windtrap.VM do
 			exec_instr(Map.put(vm, :resume, false), f, next_instr)
 		else
 			Map.put(vm, :resume, true)
-	end
+		end
 	end
 
 	defp exec_instr(vm, f, {:nop}) do
@@ -53,6 +53,7 @@ defmodule Windtrap.VM do
 
 		vm
 		|> Map.put(:pc, vm.pc+5)
+		|> Map.put(:stack, [value | vm.stack])
 		|> exec_next_instr(f, f.code[vm.pc+5])
 	end
 	defp exec_instr vm, f, {:"i32.const", c} do

@@ -33,7 +33,13 @@ defmodule Windtrap.VM do
 	# know which function the VM has been halted in, in order to
 	# resume.
 	defp exec_next_instr(vm, f, next_instr) do
+		# If pc is in the breakpoint list, the function will return, and in iEx
+		# this will prompt the user.
+		if !Map.has_key?(vm.breakpoints, vm.pc) || vm.resume do
 			exec_instr(Map.put(vm, :resume, false), f, next_instr)
+		else
+			Map.put(vm, :resume, true)
+	end
 	end
 
 	defp exec_instr(vm, f, {:nop}) do
@@ -117,6 +123,11 @@ defmodule Windtrap.VM do
 			|> exec_next_instr(return_f, return_f.code[return_pc])
 		end
 	end
+	def break vm, addr do
+		found = Enum.reduce Tuple.to_list(vm.module.codes), false, fn (code, found) ->
+			found || Map.has_key?(code.code, addr)
 		end
+		unless found, do: raise("Invalid address")
+		Map.put vm, :breakpoints, Map.put(vm.breakpoints, addr, 0)
 	end
 end

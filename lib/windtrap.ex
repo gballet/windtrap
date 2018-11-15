@@ -193,8 +193,30 @@ defmodule Windtrap do
 	end
 
 
+	@doc """
+	Runs a loaded module
+
+	## Parameters
+
+		* `module` is a loaded module;
+		* `func` is the index of the function to run. If it's a string then
+			`exec` will look for the corresponding export; if it's a number it
+			will run the function at this index; if it's false, then it will
+			try to run the "start" function; and
+		* `args` is a list of arguments to the function, pushed on the stack
+		  before execution starts.
+	"""
+	def exec(module, funcid \\ false, args \\ []) do
+		f = case funcid do
+			s when is_binary(s) -> elem(module.codes, Map.get(module.exports, s))
+			idx when is_number(idx) -> elem(module.codes, idx)
+			false -> elem(module.codes, module.start)
+			invalid -> throw("Invalid function identifier #{inspect invalid}, can't find a corresponding function to execute.")
 	end
 
+		startaddr = Enum.min(Map.keys(f))
+		vm = %Windtrap.VM{stack: args, pc: startaddr, module: module, resume: false}
+		Windtrap.VM.exec(vm, f)
 	end
 
 	defp get_limits(type, <<p :: binary>>) when type in 0..1 do

@@ -22,8 +22,17 @@ defmodule VMTest do
     assert {:ok, module} = Windtrap.decode(@binaryen_dylib_wasm)
 		module = module |> Windtrap.load_module(@env_mock)
 
-    vm = %Windtrap.VM{stack: [], pc: 0, module: module, resume: false}
+    vm = Windtrap.VM.new([], 0, module)
 		stopped_vm = Windtrap.VM.exec(vm, elem(module.codes, 0))
 		assert 18 == stopped_vm.pc
+	end
+
+	test "check execution halts at breakpoint" do
+		assert {:ok, module} = Windtrap.decode(@binaryen_dylib_wasm)
+		module = Windtrap.load_module(module, @env_mock)
+		vm = Windtrap.VM.new([], 0, module)
+			|> Windtrap.VM.break(12)
+			|> Windtrap.VM.exec(elem(module.codes, 0))
+		assert 12 == vm.pc
 	end
 end

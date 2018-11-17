@@ -8,11 +8,22 @@ defmodule Windtrap.VM do
 						breakpoints: %{},
 						module: %Windtrap.Module{},
 						resume: false,
-						frames: []
+						frames: [],
+						globals: {}
 
 	defp mem_write vm, align, offset, value do
 		<<before :: binary-size(offset), _::binary-size(align), rest :: binary>> = vm.memory
 		Map.put vm, :memory, before <> <<value :: integer-little-size(align)>> <> rest
+	end
+
+	def new(args, startaddr, module) when is_list(args) and is_integer(startaddr) do
+		%Windtrap.VM{
+			stack: args,
+			pc: startaddr,
+			module: module,
+			resume: false,
+			globals: List.to_tuple(Enum.map(Tuple.to_list(module.globals), fn glob -> glob.value end))
+		}
 	end
 
 	@doc """
@@ -48,12 +59,20 @@ defmodule Windtrap.VM do
 	defp exec_instr(vm, f, {:block, _valtype}) do
 		exec_next_instr Map.put(vm, :pc, vm.pc+2), f, f.code[vm.pc+2]
 	end
-	defp exec_instr(vm, f, {:get_global, _idx}) do
-		value = 0
+	defp exec_instr(%Windtrap.VM{globals: globals} = vm, f, {:get_global, idx}) when idx < tuple_size(globals) do
+		value = elem(globals, idx)
 
 		vm
 		|> Map.put(:pc, vm.pc+5)
 		|> Map.put(:stack, [value | vm.stack])
+		|> exec_next_instr(f, f.code[vm.pc+5])
+	end
+	defp exec_instr(%Windtrap.VM{globals: globals} = vm, f, {:set_global, idx}) when idx < tuple_size(globals) do
+		[value | newlevel] = vm.stack
+		vm
+		|> Map.put(:pc, vm.pc+5)
+		|> Map.put(:stack, newlevel)
+		|> Map.put(:globals, Tuple.insert_at(Tuple.delete_at(globals, idx), idx, value))
 		|> exec_next_instr(f, f.code[vm.pc+5])
 	end
 	defp exec_instr vm, f, {:"i32.const", c} do

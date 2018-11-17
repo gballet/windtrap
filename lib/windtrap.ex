@@ -215,7 +215,7 @@ defmodule Windtrap do
 	end
 
 		startaddr = Enum.min(Map.keys(f))
-		vm = %Windtrap.VM{stack: args, pc: startaddr, module: module, resume: false}
+		vm = Windtrap.VM.new(args, startaddr, module)
 		Windtrap.VM.exec(vm, f)
 	end
 

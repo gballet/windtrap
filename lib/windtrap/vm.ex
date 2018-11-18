@@ -75,19 +75,161 @@ defmodule Windtrap.VM do
 		|> Map.put(:globals, Tuple.insert_at(Tuple.delete_at(globals, idx), idx, value))
 		|> exec_next_instr(f, f.code[vm.pc+5])
 	end
-	defp exec_instr vm, f, {:"i32.const", c} do
+	defp exec_instr(vm, f, {:"i32.load", offset, align}) when align == 4 do
+		<<_ :: binary-size(offset), value :: integer-size(32), _ :: binary>> = vm.memory
 		vm
-		|> Map.put(:pc, vm.pc+5)
-		|> Map.put(:stack, [c | vm.stack])
-		|> exec_next_instr(f, f.code[vm.pc+5])
+		|> Map.put(:stack, [value | vm.stack])
+		|> Map.put(:pc, vm.pc+9)
+		|> exec_next_instr(f, f.code[vm.pc+9])
 	end
-	defp exec_instr(vm, f, {:"i32.store", align, offset}) do
+	defp exec_instr(vm, f, {:"i64.load", offset, align}) when align == 8 do
+		<<_ :: binary-size(offset), value :: integer-size(64), _ :: binary>> = vm.memory
+		vm
+		|> Map.put(:stack, [value | vm.stack])
+		|> Map.put(:pc, vm.pc+9)
+		|> exec_next_instr(f, f.code[vm.pc+9])
+	end
+	defp exec_instr(vm, f, {:"f32.load", offset, align}) when align == 4 do
+		<<_ :: binary-size(offset), value :: float-size(32), _ :: binary>> = vm.memory
+		vm
+		|> Map.put(:stack, [value | vm.stack])
+		|> Map.put(:pc, vm.pc+9)
+		|> exec_next_instr(f, f.code[vm.pc+9])
+	end
+	defp exec_instr(vm, f, {:"f64.load", offset, align}) when align == 8 do
+		<<_ :: binary-size(offset), value :: float-size(64), _ :: binary>> = vm.memory
+		vm
+		|> Map.put(:stack, [value | vm.stack])
+		|> Map.put(:pc, vm.pc+9)
+		|> exec_next_instr(f, f.code[vm.pc+9])
+	end
+	defp exec_instr(vm, f, {:"i32.load8_s", offset, align}) when align == 4 do
+		<<_ :: binary-size(offset), value :: integer-size(8), _ :: binary>> = vm.memory
+		vm
+		|> Map.put(:stack, [value | vm.stack])
+		|> Map.put(:pc, vm.pc+9)
+		|> exec_next_instr(f, f.code[vm.pc+9])
+	end
+	defp exec_instr(vm, f, {:"i32.load8_u", offset, align}) when align == 4 do
+		<<_ :: binary-size(offset), value :: unsigned-integer-size(8), _ :: binary>> = vm.memory
+		vm
+		|> Map.put(:stack, [value | vm.stack])
+		|> Map.put(:pc, vm.pc+9)
+		|> exec_next_instr(f, f.code[vm.pc+9])
+	end
+	defp exec_instr(vm, f, {:"i32.load16_s", offset, align}) when align == 4 do
+		<<_ :: binary-size(offset), value :: integer-size(16), _ :: binary>> = vm.memory
+		vm
+		|> Map.put(:stack, [value | vm.stack])
+		|> Map.put(:pc, vm.pc+9)
+		|> exec_next_instr(f, f.code[vm.pc+9])
+	end
+	defp exec_instr(vm, f, {:"i32.load16_u", offset, align}) when align == 4 do
+		<<_ :: binary-size(offset), value :: unsigned-integer-size(16), _ :: binary>> = vm.memory
+		vm
+		|> Map.put(:stack, [value | vm.stack])
+		|> Map.put(:pc, vm.pc+9)
+		|> exec_next_instr(f, f.code[vm.pc+9])
+	end
+	defp exec_instr(vm, f, {:"i64.load8_s", offset, align}) when align == 8 do
+		<<_ :: binary-size(offset), value :: integer-size(8), _ :: binary>> = vm.memory
+		vm
+		|> Map.put(:stack, [value | vm.stack])
+		|> Map.put(:pc, vm.pc+9)
+		|> exec_next_instr(f, f.code[vm.pc+9])
+	end
+	defp exec_instr(vm, f, {:"i64.load8_u", offset, align}) when align == 8 do
+		<<_ :: binary-size(offset), value :: unsigned-integer-size(8), _ :: binary>> = vm.memory
+		vm
+		|> Map.put(:stack, [value | vm.stack])
+		|> Map.put(:pc, vm.pc+9)
+		|> exec_next_instr(f, f.code[vm.pc+9])
+	end
+	defp exec_instr(vm, f, {:"i64.load16_s", offset, align}) when align == 8 do
+		<<_ :: binary-size(offset), value :: integer-size(16), _ :: binary>> = vm.memory
+		vm
+		|> Map.put(:stack, [value | vm.stack])
+		|> Map.put(:pc, vm.pc+9)
+		|> exec_next_instr(f, f.code[vm.pc+9])
+	end
+	defp exec_instr(vm, f, {:"i64.load16_u", offset, align}) when align == 8 do
+		<<_ :: binary-size(offset), value :: unsigned-integer-size(16), _ :: binary>> = vm.memory
+		vm
+		|> Map.put(:stack, [value | vm.stack])
+		|> Map.put(:pc, vm.pc+9)
+		|> exec_next_instr(f, f.code[vm.pc+9])
+	end
+	defp exec_instr(vm, f, {:"i64.load32_s", offset, align}) when align == 8 do
+		<<_ :: binary-size(offset), value :: integer-size(32), _ :: binary>> = vm.memory
+		vm
+		|> Map.put(:stack, [value | vm.stack])
+		|> Map.put(:pc, vm.pc+9)
+		|> exec_next_instr(f, f.code[vm.pc+9])
+	end
+	defp exec_instr(vm, f, {:"i64.load32_u", offset, align}) when align == 8 do
+		<<_ :: binary-size(offset), value :: unsigned-integer-size(32), _ :: binary>> = vm.memory
+		vm
+		|> Map.put(:stack, [value | vm.stack])
+		|> Map.put(:pc, vm.pc+9)
+		|> exec_next_instr(f, f.code[vm.pc+9])
+	end
+	defp exec_instr(vm, f, {:"i32.store", align, offset}) when align == 4 do
 		[value | rest ] = vm.stack
 		vm
 		|> mem_write(align, offset, value)
 		|> Map.put(:pc, vm.pc+9)
 		|> Map.put(:stack, rest)
 		|> exec_next_instr(f, f[vm.pc+9])
+	end
+	defp exec_instr(vm, f, {:"i64.store", align, offset}) when align == 8 do
+		[value | rest ] = vm.stack
+		vm
+		|> mem_write(align, offset, value)
+		|> Map.put(:pc, vm.pc+9)
+		|> Map.put(:stack, rest)
+		|> exec_next_instr(f, f[vm.pc+9])
+	end
+	defp exec_instr(vm, f, {:"memory.size"}) do
+		vm
+		|> Map.put(:stack, [String.length(vm.memory) | vm.stack])
+		|> Map.put(:pc, vm.pc+2)
+		|> exec_next_instr(f, f.code[vm.pc+2])
+	end
+	defp exec_instr(vm, f, {:"memory.grow"}) do
+		[s | rest] = vm.stack
+		if s < 0, do: raise "Can not shrink memory"
+		# check that we are page-aligned, otherwise round the
+		# growth to the upper page.
+		size = if rem(s, 4096) == 0, do: s, else: ((s &&& 4095) + 4096)
+		vm
+		|> Map.put(:stack, rest)
+		|> Map.put(:pc, vm.pc+2)
+		|> Map.put(:memory, vm.memory <> <<0 :: integer-unit(8)-size(size)>>)
+		|> exec_next_instr(f, f.code[vm.pc+2])
+	end
+	defp exec_instr vm, f, {:"i32.const", c} do
+		vm
+		|> Map.put(:pc, vm.pc+5)
+		|> Map.put(:stack, [c | vm.stack])
+		|> exec_next_instr(f, f.code[vm.pc+5])
+	end
+	defp exec_instr vm, f, {:"i64.const", c} do
+		vm
+		|> Map.put(:pc, vm.pc+9)
+		|> Map.put(:stack, [c | vm.stack])
+		|> exec_next_instr(f, f.code[vm.pc+9])
+	end
+	defp exec_instr vm, f, {:"f32.const", c} do
+		vm
+		|> Map.put(:pc, vm.pc+5)
+		|> Map.put(:stack, [c | vm.stack])
+		|> exec_next_instr(f, f.code[vm.pc+5])
+	end
+	defp exec_instr vm, f, {:"f64.const", c} do
+		vm
+		|> Map.put(:pc, vm.pc+9)
+		|> Map.put(:stack, [c | vm.stack])
+		|> exec_next_instr(f, f.code[vm.pc+9])
 	end
 	defp exec_instr(vm, f, {:call, fidx}) do
 		# Get the type of the function to be called

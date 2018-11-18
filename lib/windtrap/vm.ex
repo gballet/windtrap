@@ -1,4 +1,6 @@
 defmodule Windtrap.VM do
+	use Bitwise
+
 	@moduledoc """
 	"""
 

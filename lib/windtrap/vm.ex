@@ -1,5 +1,6 @@
 defmodule Windtrap.VM do
 	use Bitwise
+	import Windtrap.Stepper
 
 	@moduledoc """
 	"""
@@ -9,9 +10,12 @@ defmodule Windtrap.VM do
 						memory: <<>>,
 						breakpoints: %{},
 						module: %Windtrap.Module{},
-						resume: false,
+						halted: false,
+						terminated: false,
 						frames: [],
-						globals: {}
+						globals: {},
+						code: <<>>,
+						jump_table: %{}
 
 	defp mem_write vm, align, offset, value do
 		<<before :: binary-size(offset), _::binary-size(align), rest :: binary>> = vm.memory
@@ -23,11 +27,31 @@ defmodule Windtrap.VM do
 			stack: args,
 			pc: startaddr,
 			module: module,
-			resume: false,
-			globals: List.to_tuple(Enum.map(Tuple.to_list(module.globals), fn glob -> glob.value end))
+			halted: false,
+			globals: Enum.reduce(Map.keys(module.globals), %{}, fn (idx, acc) ->
+				Map.put(acc, idx, module.globals[idx].value)
+			end)
 		}
 	end
 
+	@doc """
+	Given a VM and a function index, this helper function returns the
+	module and the associated data.
+	"""
+	def get_function(vm, idx) do
+		case vm.module.functions[idx] do
+			%{type: :local, addr: addr} -> {addr, false, vm.module}
+			%{type: :host, func: f} -> {f, true, vm.module}
+			%{type: :import, modname: modname, importname: imprt, tidx: _tidx} ->
+				mod = vm.module.dependencies[modname]
+				%{idx: funcidx, type: :funcidx} = mod.exports[imprt]
+				IO.puts inspect mod.functions
+				Windtrap.VM.new(vm.stack, mod.functions[funcidx], mod)
+				|> Map.put(:frames, [{:call,vm,vm.pc}|vm.frames])
+				|> exec_binary
+			%{type: t} -> raise "Unsupported call type: `#{t}`"
+		end
+	end
 	@doc """
 	Execute WASM function `func`
 

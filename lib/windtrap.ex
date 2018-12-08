@@ -32,7 +32,15 @@ defmodule Windtrap do
 	## Examples
 
 	  iex> {:ok, %Windtrap.Module{}} = Windtrap.decode(<<0x00, 0x61, 0x73, 0x6D, 0x01, 0x00, 0x00, 0x00, 0x01, 0x09, 0x02, 0x60, 0x02, 0x7F, 0x7F, 0x00, 0x60, 0x00, 0x00, 0x02, 0x13, 0x01, 0x08, 0x65, 0x74, 0x68, 0x65, 0x72, 0x65, 0x75, 0x6D, 0x06, 0x72, 0x65, 0x76, 0x65, 0x72, 0x74, 0x00, 0x00, 0x03, 0x02, 0x01, 0x01, 0x05, 0x03, 0x01, 0x00, 0x01, 0x07, 0x11, 0x02, 0x06, 0x6D, 0x65, 0x6D, 0x6F, 0x72, 0x79, 0x02, 0x00, 0x04, 0x6D, 0x61, 0x69, 0x6E, 0x00, 0x01, 0x0A, 0x13, 0x01, 0x11, 0x00, 0x41, 0x00, 0x41, 0xCD, 0xD7, 0x02, 0x36, 0x02, 0x00, 0x41, 0x00, 0x41, 0x7F, 0x10, 0x00, 0x0B>>)
-	  {:ok, %Windtrap.Module{exports: {%{export: "memory", index: 0, type: :memidx}, %{export: "main", index: 1, type: :funcidx}}, functions: {1}, imports: {%{import: "revert", index: 0, mod: "ethereum", type: :typeidx}}, sections: %{1 => <<2, 96, 2, 127, 127, 0, 96, 0, 0>>, 2 => <<1, 8, 101, 116, 104, 101, 114, 101, 117, 109, 6, 114, 101, 118, 101, 114, 116, 0, 0>>, 3 => <<1, 1>>, 5 => <<1, 0, 1>>, 7 => <<2, 6, 109, 101, 109, 111, 114, 121, 2, 0, 4, 109, 97, 105, 110, 0, 1>>, 10 => <<1, 17, 0, 65, 0, 65, 205, 215, 2, 54, 2, 0, 65, 0, 65, 127, 16, 0, 11>>}, types: {{{:i32, :i32}, {}}, {{}, {}}}, codes: {%{code: %{0 => {:"i32.const", 0}, 5 => {:"i32.const", 43981}, 10 => {:"i32.store", 2, 0}, 19 => {:"i32.const", 0}, 24 => {:"i32.const", 127}, 29 => {:call, 0}, 34 => {:block_return}}, locals: "", num_locals: 0}}, memory: {%{min: 1}}}}
+	  {:ok, %Windtrap.Module{
+			exports: {%{export: "memory", index: 0, type: :memidx}, %{export: "main", index: 1, type: :funcidx}},
+			functions: %{0 => %{importname: "revert", modname: "ethereum", tidx: 0, type: :import}, 1 => %{addr: 0, locals: "", num_locals: 0, tidx: 1, type: :local}},
+			imports: {%{import: "revert", index: 0, mod: "ethereum", type: :typeidx}},
+			sections: %{1 => <<2, 96, 2, 127, 127, 0, 96, 0, 0>>, 2 => <<1, 8, 101, 116, 104, 101, 114, 101, 117, 109, 6, 114, 101, 118, 101, 114, 116, 0, 0>>, 3 => <<1, 1>>, 5 => <<1, 0, 1>>, 7 => <<2, 6, 109, 101, 109, 111, 114, 121, 2, 0, 4, 109, 97, 105, 110, 0, 1>>, 10 => <<1, 17, 0, 65, 0, 65, 205, 215, 2, 54, 2, 0, 65, 0, 65, 127, 16, 0, 11>>},
+			types: {{{:i32, :i32}, {}}, {{}, {}}},
+			function_types: {1},
+			code: <<65, 0, 0, 0, 0, 65, 205, 171, 0, 0, 54, 2, 0, 0, 0, 0, 0, 0, 0, 65, 0, 0, 0, 0, 65, 127, 0, 0, 0, 16, 0, 0, 0, 0, 11>>,
+			memory: {%{min: 1}}}}
 	"""
 	def decode(data) do
 		try do

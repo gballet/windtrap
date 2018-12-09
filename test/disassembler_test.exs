@@ -1,5 +1,5 @@
 defmodule DisassemblerTest do
-  use ExUnit.Case
+	use ExUnit.Case
   doctest Windtrap.Disassembler
 
   @sample_func_code <<2, 64, 35, 0, 65, 16, 106, 36, 2, 35, 2, 65, 128, 128, 192, 2, 106, 36, 3, 16, 2, 11, 11>>

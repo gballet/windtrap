@@ -113,9 +113,8 @@ defmodule WindtrapTest do
 			"tableBase" => %{type: :global, idx: 1},
 			"memory" => %{type: :memory, idx: 0 }
 		},
-		codes: {
-			%{code: %{0 => {:nop}}}
-		}
+		code: <<0, 11>>,
+		functions: %{0 => %{type: :local, addr: 0, num_locals: 0, tidx: 0, locals: ""}}
 	}}
 
 	test "unfurl invalid vector" do
@@ -149,10 +148,10 @@ defmodule WindtrapTest do
 
 	test "module sections can be decoded" do
 		{:ok, m} = Windtrap.decode(@binaryen_dylib_wasm)
-		assert tuple_size(m.codes) == 3
+		assert byte_size(m.code) == 69
 		assert tuple_size(m.types) == 3
 		assert tuple_size(m.imports) == 5
-		assert tuple_size(m.globals) == 3
+		assert Map.size(m.globals) == 3
 		assert tuple_size(m.exports) == 4
 		assert tuple_size(m.data) == 1
 		assert Map.size(m.sections) == 9
@@ -190,12 +189,38 @@ defmodule WindtrapTest do
 
 	test "function section can be decoded" do
 		{:ok, m} = Windtrap.decode(@binaryen_dylib_wasm)
-		assert 3 == tuple_size(m.functions)
-		assert {1, 2, 2} == m.functions
-		Enum.each Tuple.to_list(m.functions), fn typeidx ->
-			assert typeidx >= 0
-			assert typeidx < tuple_size(m.types)
+		assert 4 == Map.size(m.functions)
+		Enum.each m.functions, fn {idx, f} ->
+			if idx == 0 do
+				assert :import == f.type
+			else
+				assert :local == f.type
+			end
+
+			if f.type == :local do
+				assert f.addr >= 0
+				if idx > 1 do
+					assert f.tidx == 2
+				else
+					assert f.tidx == 1
+				end
+			end
+
+			assert f.tidx >= 0
+			assert f.tidx < tuple_size(m.types)
 		end
+
+		assert %{
+			0 => %{
+				importname: "_puts",
+				modname: "env",
+				tidx: 0,
+				type: :import
+			},
+			1 => %{addr: 0, locals: "", num_locals: 0, tidx: 1, type: :local},
+			2 => %{addr: 23, locals: "", num_locals: 0, tidx: 2, type: :local},
+			3 => %{addr: 25, locals: "", num_locals: 0, tidx: 2, type: :local}
+		} == m.functions
 	end
 
 	test "export section can be decoded" do
@@ -221,13 +246,13 @@ defmodule WindtrapTest do
 
 	test "global section can be decoded" do
 		{:ok, m} = Windtrap.decode(@binaryen_dylib_wasm)
-		glob0 = elem(m.globals, 0)
-		assert :var == glob0.mut
-		assert 0 == glob0.value
+		assert %{
+			0 => %{expr: %{0 => {:"i32.const", 0},5 => {:block_return}}, mut: :var, type: :i32, value: 0},
+			1 => %{expr: %{0 => {:"i32.const", 0}, 5 => {:block_return}}, mut: :var, type: :i32, value: 0},
+			2 => %{expr: %{0 => {:"i32.const", 0}, 5 => {:block_return}}, mut: :const, type: :i32, value: 0}
+		} == m.globals
 
-		glob2 = elem(m.globals, 2)
-		assert :const == glob2.mut
-		assert 0 == glob2.value
+		assert Map.size(m.globals) == 3
 	end
 
 	test "memory section can be decoded" do
@@ -260,15 +285,16 @@ defmodule WindtrapTest do
 	# tester locals dans code
 	test "function disassembly with increasing addresses" do
 		{:ok, m} = Windtrap.decode(@binaryen_dylib_wasm)
-		assert Map.has_key?(elem(m.codes, 1).code, 0) == false
+		addrs = Enum.map(Enum.filter(m.functions, fn {_,f} -> Map.has_key?(f, :addr) end), fn {_, f} -> f.addr end)
+		assert 3 == length(addrs)
+		[f1, f2, f3] = addrs
+		assert f1 < f2
+		assert f2 < f3
 	end
 
-	test "function disassembly always ends in 0xb" do
+	test "each function disassembly should end in 0xb" do
 		{:ok, m} = Windtrap.decode(@binaryen_dylib_wasm)
-		Enum.map(Tuple.to_list(m.codes), fn code ->
-			lastaddr = Enum.max Map.keys code.code
-			assert {:block_return} = Map.get(code.code, lastaddr)
-		end)
+		assert <<_ :: binary-size(22), 0xb, 1, 0xb, a :: binary-size(43), 0xb>> = m.code
 	end
 
 	test "module resolution" do

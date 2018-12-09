@@ -13,26 +13,63 @@ defmodule VMTest do
 			"tableBase" => %{type: :global, idx: 1},
 			"memory" => %{type: :memory, idx: 0 }
 		},
-		codes: {
-			%{code: %{0 => {:nop}, 1 => {:block_return}}}
-		}
+		code: <<1, 11>>,
+		functions: %{0 => %{type: :local, addr: 0, num_locals: 0, tidx: 0, locals: ""}}
 	}}
 
   test "execute simple module" do
-    assert {:ok, module} = Windtrap.decode(@binaryen_dylib_wasm)
+		assert {:ok, module} = Windtrap.decode(@binaryen_dylib_wasm)
 		module = module |> Windtrap.load_module(@env_mock)
 
-    vm = Windtrap.VM.new([], 0, module)
-		stopped_vm = Windtrap.VM.exec(vm, elem(module.codes, 0))
-		assert 18 == stopped_vm.pc
+    vm = Windtrap.VM.new([], module.functions[3].addr, module)
+		stopped_vm = Windtrap.VM.exec_binary(vm)
+		assert 69 == stopped_vm.pc
+		assert true == stopped_vm.terminated
+
+		vm = Windtrap.VM.new([], module.functions[2].addr, module)
+		stopped_vm = Windtrap.VM.exec_binary(vm)
+		assert 25 == stopped_vm.pc
+		assert true == stopped_vm.terminated
+
+		vm = Windtrap.VM.new([], module.functions[1].addr, module)
+		stopped_vm = Windtrap.VM.exec_binary(vm)
+		assert 23 == stopped_vm.pc
+		assert true == stopped_vm.terminated
 	end
 
 	test "check execution halts at breakpoint" do
 		assert {:ok, module} = Windtrap.decode(@binaryen_dylib_wasm)
 		module = Windtrap.load_module(module, @env_mock)
 		vm = Windtrap.VM.new([], 0, module)
-			|> Windtrap.VM.break(12)
-			|> Windtrap.VM.exec(elem(module.codes, 0))
-		assert 12 == vm.pc
+			|> Windtrap.VM.break(10)
+			|> Windtrap.VM.exec_binary()
+		assert 10 == vm.pc
+	end
+
+	test "check that setting a breakpoint at an invalid address is impossible" do
+		assert {:ok, module} = Windtrap.decode(@binaryen_dylib_wasm)
+		module = Windtrap.load_module(module, @env_mock)
+		vm = Windtrap.VM.new([], 0, module)
+		assert_raise RuntimeError, fn ->
+			Windtrap.VM.break(vm, -1)
+		end
+
+		assert {:ok, module} = Windtrap.decode(@binaryen_dylib_wasm)
+		module = Windtrap.load_module(module, @env_mock)
+		vm = Windtrap.VM.new([], 0, module)
+		assert_raise RuntimeError, fn ->
+			Windtrap.VM.break(vm, 100000)
+		end
+	end
+
+	test "check that it is possible to resume after hitting a breakpoint" do
+		assert {:ok, module} = Windtrap.decode(@binaryen_dylib_wasm)
+		module = Windtrap.load_module(module, @env_mock)
+		halted_vm = Windtrap.VM.new([], 0, module)
+			|> Windtrap.VM.break(10)
+			|> Windtrap.VM.exec_binary()
+			|> Windtrap.VM.resume()
+		assert 23 == halted_vm.pc
+		assert true == halted_vm.terminated
 	end
 end

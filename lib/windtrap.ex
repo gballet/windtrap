@@ -88,7 +88,7 @@ defmodule Windtrap do
 			acc <> "#{import.mod}#{modspaces}:#{import.import}#{namespaces}#{import.type}\n"
 		end
 
-		ftypes = Enum.reduce Enum.with_index(Tuple.to_list(module.functions)), "", fn {fidx, tidx}, acc ->
+		ftypes = Enum.reduce Enum.with_index(Tuple.to_list(module.function_types)), "", fn {fidx, tidx}, acc ->
 			acc <> "$f#{tidx}: #{inspect(elem(module.types, fidx))}\n"
 		end
 
@@ -150,54 +150,41 @@ defmodule Windtrap do
 			module.
 	"""
 	def load_module(module, imports \\ %{}) do
-		resolved = Enum.map Tuple.to_list(module.imports), fn imprt ->
-			%{type: itype} = imprt
+		{resolved, deps} = Enum.reduce(Tuple.to_list(module.imports),
+												{[], module.dependencies},
+												fn (imprt, {resolved, deps}) ->
+			%{type: itype, mod: modname, import: importname} = imprt
 			# export and import entries have a slight discrepancy, make
 			# sure all equality tests match.
 			etype = if itype == :typeidx, do: :funcidx, else: itype
 
-			# Check that the module exists, otherwise try to load if from disk
-			with {:ok, mod} <- Map.fetch(imports, imprt.mod),
-				{:ok, %{type: ^etype, idx: eidx}} <- Map.fetch(mod.exports, imprt.import) do
-				imprt
-				|> Map.put(:resolved, true)
-				|> Map.put(:module, Map.get(imports, imprt.mod))
-				|> Map.put(:exportidx, eidx)
-			else
-				_ ->
-					with {:ok, m} <- load_file("#{imprt.mod}.wasm"),
-					{:ok, %{type: ^etype, idx: eidx}} <- Map.fetch(m.exports, imprt.name) do
-						imprt
-						|> Map.put(:resolved, true)
-						|> Map.put(:module, m)
-						|> Map.put(:exportidx, eidx)
-					else
-						_ -> throw("Could not find a module named '#{imprt.mod}'' containing export '#{imprt.import}'")
-					end
+			# Load the module from `imports` or disk if it doesn't exist
+			# in the dependency list.
+			mod = cond do
+				Map.has_key?(module.dependencies, modname) ->
+					Map.get(module.dependencies, modname)
+				Map.has_key?(imports, modname) ->
+					Map.get(imports, modname)
+				{:ok, m} = load_file("#{imprt.mod}.wasm") ->
+					m
+				true ->
+					raise "Could not resolve module #{modname}"
 			end
-		end
 
-		# Build the function index; it has two parts:
-		#  1. The first part is a list of reference to all
-		#     imported functions. They follow the order
-		#     they are declared in the `import` section.
-		#  2. The second part is a list of references to
-		#     functions in the module. They follow the order
-		#     that they are declared in the `code` section.
-		indices = (resolved # import part
-		|> Enum.filter(fn imprt -> imprt.type == :typeidx end)
-		|> Enum.map(fn imprt -> %{module: imprt.module, exportidx: imprt.exportidx, name: imprt.import} end)
-		) ++ (module.codes # code part
-			|> Tuple.to_list
-			|> Enum.with_index
-			|> Enum.map(fn {_, idx} ->
-			%{fidx: idx}
-			end)
-		)	|> List.to_tuple
+			# Check that the module export the correct import
+			{:ok, %{type: ^etype, idx: eidx}} = Map.fetch(mod.exports, importname)
+
+			i = imprt
+				|> Map.put(:resolved, true)
+				|> Map.put(:exportidx, eidx)
+
+			{[i|resolved], Map.put(deps, modname, mod)}
+		end)
 
 		module
+		|> Map.put(:dependencies,deps)
 		|> Map.put(:imports, List.to_tuple(resolved))
-		|> Map.put(:function_index, indices)
+		|> Map.put(:function_index, Enum.reduce(module.functions, %{}, fn ({fidx, f}, acc) -> Map.put(acc, fidx, f.tidx) end))
 	end
 
 
@@ -220,7 +207,7 @@ defmodule Windtrap do
 			idx when is_number(idx) -> elem(module.codes, idx)
 			false -> elem(module.codes, module.start)
 			invalid -> throw("Invalid function identifier #{inspect invalid}, can't find a corresponding function to execute.")
-	end
+		end
 
 		startaddr = Enum.min(Map.keys(f))
 		vm = Windtrap.VM.new(args, startaddr, module)
@@ -234,7 +221,7 @@ defmodule Windtrap do
 			{%{min: min, max: max}, r}
 		else
 			{%{min: min}, q}
-	end
+		end
 	end
 
 	def vec(type, <<payload :: binary>>) when is_atom(type) do
@@ -284,6 +271,14 @@ defmodule Windtrap do
 		{initsize, r} = varint initvec_and_rest
 		<<init :: binary-size(initsize) , rest :: binary>> = r
 		{{offset, init, instr == 0x23}, rest}
+	end
+	defp vec_item(:code, payload) do
+		{size, r} = varint(payload)
+		<<code_and_locals::binary-size(size), left::binary>> = r
+		{nlocals, <<r2::binary>>} = varint(code_and_locals)
+		<<locals::binary-size(nlocals), code::binary>> = r2
+		normalized = Windtrap.Normalizer.normalize(code)
+		{%{num_locals: nlocals, locals: locals, code: normalized}, left}
 	end
 
 	defp import_vec_item_type(t, <<0x3, type, constvar, p::binary>>) do
@@ -361,8 +356,23 @@ defmodule Windtrap do
 	defp decode_imports(module) do
 		section = module.sections[@section_imports_id]
 		unless is_nil(section) do
-		{imports, ""} = vec(:import, section)
-		Map.put(module, :imports, imports)
+			{imports, ""} = vec(:import, section)
+			module
+			|> Map.put(:imports, imports)
+			|> Map.put(:functions, Enum.reduce(Tuple.to_list(imports), %{}, fn (imprt, acc) ->
+				if imprt.type == :typeidx do
+					Map.put(acc, Map.size(acc), %{type: :import, modname: imprt.mod, importname: imprt.import, tidx: imprt.index})
+				else
+					acc
+				end
+			end))
+			|> Map.put(:globals, Enum.reduce(Tuple.to_list(imports), %{}, fn (imprt, acc) ->
+				if imprt.type == :global do
+					Map.put(acc, Map.size(acc), %{type: :import, valtype: imprt.type, value: 0})
+				else
+					acc
+				end
+			end))
 		else
 			module
 		end
@@ -372,7 +382,7 @@ defmodule Windtrap do
 		section = module.sections[@section_function_id]
 		unless is_nil(section) do
 			{indices, ""} = vec(:indices, section)
-		Map.put(module, :functions, indices)
+			Map.put(module, :function_types, indices)
 		else
 			module
 		end
@@ -385,7 +395,7 @@ defmodule Windtrap do
 			Map.put(module, :table, tables)
 		else
 			module
-	end
+		end
 	end
 	defp decode_memory(module) do
 		section = module.sections[@section_memory_id]
@@ -393,8 +403,8 @@ defmodule Windtrap do
 			{memories, ""} = vec(:memory, section)
 			Map.put(module, :memory, memories)
 		else
-		module
-	end
+			module
+		end
 	end
 
 	defp valtype(@i32type), do: :i32
@@ -403,8 +413,8 @@ defmodule Windtrap do
 	defp valtype(@f64type), do: :f64
 	defp globaltype(0), do: :const
 	defp globaltype(1), do: :var
-	defp global_vec_item(t, 0, ""), do: t
-	defp global_vec_item(t, n, <<p::binary>>) do
+	defp global_vec_item(t, _, 0, ""), do: t
+	defp global_vec_item(t, total, n, <<p::binary>>) do
 		<<vt, mut, q::binary>>= p
 
 		# Disassemble the init code of the global
@@ -414,14 +424,14 @@ defmodule Windtrap do
 		[initval|_] = Windtrap.VM.exec(%Windtrap.VM{}, %{code: dis}).stack
 
 		t
-		|> Tuple.append(%{type: valtype(vt), mut: globaltype(mut), expr: dis, value: initval})
-		|> global_vec_item(n-1, r)
+		|> Map.put(total - n, %{type: valtype(vt), mut: globaltype(mut), expr: dis, value: initval})
+		|> global_vec_item(total, n-1, r)
 	end
 	defp decode_global(module) do
 		if Map.has_key?(module.sections, @section_globals_id) do
 			section = module.sections[@section_globals_id]
 			{nglobals, data} = varint(section)
-			globals = global_vec_item {}, nglobals, data
+			globals = global_vec_item(%{}, nglobals,nglobals, data)
 			Map.put(module, :globals, globals)
 		else
 			module
@@ -466,21 +476,24 @@ defmodule Windtrap do
 		end
 	end
 
-	defp vec_code(v, _, 0, ""), do: v
-	defp vec_code(v, offset, n, <<payload::binary>>) do
-		{size, r} = varint(payload)
-		<<code_and_locals::binary-size(size), left::binary>> = r
-		{nlocals, <<r2::binary>>} = varint(code_and_locals)
-		<<locals::binary-size(nlocals), code::binary>> = r2
-		{:ok, {dis,noffset}, ""} =  Windtrap.Disassembler.disassemble(code, offset, %{})
-		vec_code(Tuple.append(v, %{num_locals: nlocals, locals: locals, code: dis}), noffset, n-1, left)
-	end
 	defp decode_code(module) do
 		section = module.sections[@section_code_id]
 		unless is_nil(section) do
-			{n, vecdata} = varint(section)
-		codes = vec_code({}, 0, n, vecdata)
-		Map.put(module, :codes, codes)
+			{normalized, ""} = vec(:code, section)
+			{code, functions} = normalized
+			|> Tuple.to_list
+			|> Enum.with_index
+			|> Enum.reduce({"", module.functions}, fn ({func,tidx}, {c, funcs}) ->
+				# Merge the code and update the function list
+				{
+					c <> func.code,
+					Map.put(funcs, Map.size(funcs), %{type: :local, addr: byte_size(c), num_locals: func.num_locals, locals: func.locals, tidx: elem(module.function_types, tidx)})
+				}
+			end)
+
+			module
+			|> Map.put(:code, code)
+			|> Map.put(:functions, functions)
 		else
 			module
 		end

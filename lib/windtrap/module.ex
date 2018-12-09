@@ -8,11 +8,16 @@ defmodule Windtrap.Module do
 						exports: {},
 						types: {},
 						# types of each function implemented by this module
-						functions: {},
+						function_types: {},
 						sections: %{},
-						codes: {},
+						# List of function descriptors
+						functions: %{},
 						# types of each imported function, followed by those of
 						# functions implemented by this module
 						function_index: {},
-						memory: {}
+						memory: {},
+						code: <<>>,
+						globals: %{},
+						# List of resolved modules, keyed by module name
+						dependencies: %{}
 end

@@ -146,7 +146,16 @@ defmodule Windtrap.VM do
 		{pc, host, mod} = Windtrap.VM.get_function(vm, idx)
 		cond do
 			host == true ->
-				raise "Not yet supported"
+				arity = :erlang.fun_info(pc)[:arity]
+				if length(vm.stack) < arity, do: raise "Not enough parameters on the stack"
+				ret = apply(pc, Enum.take(vm.stack, arity))
+				stack = if ret != :ok do
+					[ret | Enum.drop(vm.stack, arity)]
+				else
+					Enum.drop(vm.stack, arity)
+				end
+
+				Map.put(vm, :stack, stack)
 			mod == vm.module ->
 				vm
 				|> Map.put(:frames, [{:call, mod, vm.pc}|vm.frames])

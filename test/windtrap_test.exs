@@ -247,9 +247,9 @@ defmodule WindtrapTest do
 	test "global section can be decoded" do
 		{:ok, m} = Windtrap.decode(@binaryen_dylib_wasm)
 		assert %{
-			0 => %{expr: %{0 => {:"i32.const", 0},5 => {:block_return}}, mut: :var, type: :i32, value: 0},
-			1 => %{expr: %{0 => {:"i32.const", 0}, 5 => {:block_return}}, mut: :var, type: :i32, value: 0},
-			2 => %{expr: %{0 => {:"i32.const", 0}, 5 => {:block_return}}, mut: :const, type: :i32, value: 0}
+			0 => %{expr: <<65, 0, 0, 0, 0, 11>>, mut: :var, type: :i32, value: 0},
+			1 => %{expr: <<65, 0, 0, 0, 0, 11>>, mut: :var, type: :i32, value: 0},
+			2 => %{expr: <<65, 0, 0, 0, 0, 11>>, mut: :const, type: :i32, value: 0}
 		} == m.globals
 
 		assert Map.size(m.globals) == 3

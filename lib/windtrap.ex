@@ -202,16 +202,9 @@ defmodule Windtrap do
 		  before execution starts.
 	"""
 	def exec(module, funcid \\ false, args \\ []) do
-		f = case funcid do
-			s when is_binary(s) -> elem(module.codes, Map.get(module.exports, s))
-			idx when is_number(idx) -> elem(module.codes, idx)
-			false -> elem(module.codes, module.start)
-			invalid -> throw("Invalid function identifier #{inspect invalid}, can't find a corresponding function to execute.")
+		if funcid != false do
+			Windtrap.VM.new(args, funcid, module) |> Windtrap.VM.exec_binary()
 		end
-
-		startaddr = Enum.min(Map.keys(f))
-		vm = Windtrap.VM.new(args, startaddr, module)
-		Windtrap.VM.exec(vm, f)
 	end
 
 	defp get_limits(type, <<p :: binary>>) when type in 0..1 do

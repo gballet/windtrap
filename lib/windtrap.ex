@@ -277,7 +277,7 @@ defmodule Windtrap do
 		<<code_and_locals::binary-size(size), left::binary>> = r
 		{nlocals, <<r2::binary>>} = varint(code_and_locals)
 		<<locals::binary-size(nlocals), code::binary>> = r2
-		normalized = Windtrap.Normalizer.normalize(code)
+		{normalized, _jumps} = Windtrap.Normalizer.normalize(code)
 		{%{num_locals: nlocals, locals: locals, code: normalized}, left}
 	end
 
@@ -414,24 +414,30 @@ defmodule Windtrap do
 	defp globaltype(0), do: :const
 	defp globaltype(1), do: :var
 	defp global_vec_item(t, _, 0, ""), do: t
-	defp global_vec_item(t, total, n, <<p::binary>>) do
-		<<vt, mut, q::binary>>= p
-
-		# Disassemble the init code of the global
-		{:ok, {dis, _}, r} = Windtrap.Disassembler.disassemble(q, 0, %{})
+	defp global_vec_item(t, total, n, <<normalized::binary>>) do
+		<<vt, mut, q::binary>>= normalized
 
 		# Execute it to get the init value
-		[initval|_] = Windtrap.VM.exec(%Windtrap.VM{}, %{code: dis}).stack
+		tempvm = Windtrap.VM.new([], 0, %Windtrap.Module{code: q})
+		resultvm = Windtrap.VM.exec_binary(tempvm)
+		[initval|_] = resultvm.stack
+		# Find the start of the next global init
+		nextoff = resultvm.pc
+		<<expr :: binary-size(nextoff) , next :: binary>> = q
 
 		t
-		|> Map.put(total - n, %{type: valtype(vt), mut: globaltype(mut), expr: dis, value: initval})
-		|> global_vec_item(total, n-1, r)
+		|> Map.put(total - n, %{type: valtype(vt), mut: globaltype(mut), expr: expr, value: initval})
+		|> global_vec_item(total, n-1, next)
 	end
 	defp decode_global(module) do
 		if Map.has_key?(module.sections, @section_globals_id) do
 			section = module.sections[@section_globals_id]
 			{nglobals, data} = varint(section)
-			globals = global_vec_item(%{}, nglobals,nglobals, data)
+			{normalized, _} = Windtrap.Normalizer.normalize(data)
+			# NOTE: this code works because block type descriptors are
+			# not expanded by the normalizer. The long term goal is to
+			# enhance the normalizer with a stop condition.
+			globals = global_vec_item(%{}, nglobals,nglobals, normalized)
 			Map.put(module, :globals, globals)
 		else
 			module

@@ -14,24 +14,43 @@ defmodule Windtrap.VM do
 						terminated: false,
 						frames: [],
 						globals: {},
+						locals: %{},	# Locals of the current function
+						params: {},	# Parameters of the current function
 						code: <<>>,
-						jump_table: %{}
+						fidx: 0 # Index of the function being executed
 
 	defp mem_write vm, align, offset, value do
 		<<before :: binary-size(offset), _::binary-size(align), rest :: binary>> = vm.memory
 		Map.put vm, :memory, before <> <<value :: integer-little-size(align)>> <> rest
 	end
 
-	def new(args, startaddr, module) when is_list(args) and is_integer(startaddr) do
-		%Windtrap.VM{
-			stack: args,
-			pc: startaddr,
-			module: module,
-			resume: false,
-			globals: Enum.reduce(Map.keys(module.globals), %{}, fn (idx, acc) ->
-				Map.put(acc, idx, module.globals[idx].value)
-			end)
-		}
+	def new(args, funcidx, module) when is_list(args) and is_integer(funcidx) do
+		func = module.functions[funcidx]
+		unless Map.has_key?(func, :type) and func.type == :host do
+			%Windtrap.VM{
+				stack: [],
+				pc: func.addr,
+				fidx: funcidx,
+				module: module,
+				resume: false,
+				locals: func.locals,
+				params: List.to_tuple(args),
+				globals: Enum.reduce(Map.keys(module.globals), %{}, fn (idx, acc) ->
+					Map.put(acc, idx, module.globals[idx].value)
+				end)
+			}
+		else
+			%Windtrap.VM{
+				stack: [],
+				pc: 0,
+				fidx: funcidx,
+				module: module,
+				params: List.to_tuple(args),
+				globals: Enum.reduce(Map.keys(module.globals), %{}, fn (idx, acc) ->
+					Map.put(acc, idx, module.globals[idx].value)
+				end)
+			}
+		end
 	end
 
 	@doc """
@@ -85,7 +104,30 @@ defmodule Windtrap.VM do
 	defp exec_instr_b(vm, 1, ""), do: vm
 	defp exec_instr_b(vm, 2, type), do:	Map.put(vm, :frames, [{:block,type,vm.pc}|vm.frames])
 	defp exec_instr_b(vm, 3, type), do: Map.put(vm, :frames, [{:loop,type,vm.pc}|vm.frames])
-	defp exec_instr_b(vm, 4, type), do: Map.put(vm, :frames, [{:if,type,vm.pc}|vm.frames])
+	defp exec_instr_b(vm, 4, _type) do
+		[ok|rest] = vm.stack
+		ifdesc = vm.module.functions[vm.fidx].jumps[vm.pc-7]
+		pc = if ok != 0 do
+			vm.pc
+		else
+			if Map.has_key?(ifdesc, :elseloc) do
+				ifdesc.elseloc+3
+			else
+				ifdesc.endloc+2
+			end
+		end
+		vm
+		|> Map.put(:frames, [{:if,vm,ifdesc.endloc+2}|vm.frames])
+		|> Map.put(:stack, rest)
+		|> Map.put(:pc, pc)
+	end
+	defp exec_instr_b(vm, 5, "") do
+		%{frames: [{:if,return_vm,ref_pc}|rest]} = vm
+		return_vm
+		|> Map.put(:frames, rest)
+		|> Map.put(:pc, ref_pc)
+		|> Map.put(:stack, vm.stack)
+	end
 	defp exec_instr_b(vm, 0xb, "") do
 		case vm do
 			%Windtrap.VM{frames: [{blocktype,return_vm,ref_pc}|rest]} ->
@@ -98,8 +140,14 @@ defmodule Windtrap.VM do
 						|> Map.put(:pc, ref_pc)
 					:import_call ->
 						return_vm
-					:loop -> raise "Not supported yet"
-					:if -> raise "Not supported yet"
+
+					:loop -> raise "not supported yet"
+						vm
+					:if ->
+						vm
+						|> Map.put(:pc, ref_pc)
+						|> Map.put(:frames, rest)
+
 					_ -> raise "Invalid type #{blocktype}"
 				end
 			%Windtrap.VM{frames: []} ->
@@ -172,7 +220,17 @@ defmodule Windtrap.VM do
 	end
 	defp exec_instr_b(%Windtrap.VM{stack: [_|rest]} = vm, 0x1a, ""), do: Map.put(vm, :stack, rest)
 	defp exec_instr_b(%Windtrap.VM{stack: [val1|[val2|[det|rest]]]} = vm, 0x1b, ""), do:	Map.put(vm, :stack, [(if det == 0, do: val1, else: val2)|rest])
-	defp exec_instr_b(%Windtrap.VM{globals: globals} = vm, 0x23, idx), do:	Map.put(vm, :stack, [globals[idx] | vm.stack])
+	defp exec_instr_b(%Windtrap.VM{fidx: fidx, module: mod} = vm, 0x20, idx) do
+		f = mod.functions[fidx]
+		if idx > f.nparams do
+			Map.put(vm, :stack, [f.locals[idx-f.nparams] | vm.stack])
+		else
+			IO.puts inspect vm.params
+			IO.puts inspect elem(vm.params, idx)
+			Map.put(vm, :stack, [elem(vm.params, idx) | vm.stack])
+		end
+	end
+	defp exec_instr_b(%Windtrap.VM{globals: globals} = vm, 0x23, idx), do: Map.put(vm, :stack, [globals[idx] | vm.stack])
 	defp exec_instr_b(%Windtrap.VM{globals: globals, stack: [val|rest]} = vm, 0x24, idx) do
 		vm
 		|> Map.put(:stack, rest)
@@ -222,6 +280,7 @@ defmodule Windtrap.VM do
 	end
 
 	def list vm do
+		IO.puts "Breakpoint list:"
 		Enum.each(Enum.with_index(vm.breakpoints), fn {{addr, %{count: c, callback: cb}}, index} ->
 			IO.puts "#{index+1} at #{addr} hit #{c} time(s)#{unless is_nil(cb), do: "has callback", else: ""}"
 		end)

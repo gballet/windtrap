@@ -76,6 +76,24 @@ defmodule VMTest do
 		assert true == halted_vm.terminated
 	end
 
+	test "check that it is able to call a native function" do
+		assert {:ok, module} = Windtrap.decode(@binaryen_dylib_wasm)
+
+		IO.puts inspect @env_mock
+		env_module = Map.put(@env_mock, "env",
+			@env_mock["env"]
+			|> Map.put(:functions, %{0 => %{type: :host, func: fn x -> IO.puts inspect x; String.length(inspect x) end}})
+			|> Map.delete(:code)
+		)
+		IO.puts inspect env_module
+
+		module = Windtrap.load_module(module, env_module)
+		halted_vm = Windtrap.VM.new([], 1, module)
+			|> Windtrap.VM.exec_binary()
+		assert 23 == halted_vm.pc
+		assert true == halted_vm.terminated
+	end
+
 	test "execute a simple if/else/end module" do
 		assert {:ok, module} = Windtrap.decode(@if_else_wasm)
 		module = Windtrap.load_module(module)

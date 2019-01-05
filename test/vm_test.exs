@@ -25,17 +25,17 @@ defmodule VMTest do
 		module = module |> Windtrap.load_module(@env_mock)
 
     vm = Windtrap.VM.new([], 3, module)
-		stopped_vm = Windtrap.VM.exec_binary(vm)
+		stopped_vm = Windtrap.VM.exec(vm)
 		assert 69 == stopped_vm.pc
 		assert true == stopped_vm.terminated
 
 		vm = Windtrap.VM.new([], 2, module)
-		stopped_vm = Windtrap.VM.exec_binary(vm)
+		stopped_vm = Windtrap.VM.exec(vm)
 		assert 25 == stopped_vm.pc
 		assert true == stopped_vm.terminated
 
 		vm = Windtrap.VM.new([], 1, module)
-		stopped_vm = Windtrap.VM.exec_binary(vm)
+		stopped_vm = Windtrap.VM.exec(vm)
 		assert 23 == stopped_vm.pc
 		assert true == stopped_vm.terminated
 	end
@@ -45,7 +45,7 @@ defmodule VMTest do
 		module = Windtrap.load_module(module, @env_mock)
 		vm = Windtrap.VM.new([], 1, module)
 			|> Windtrap.VM.break(10)
-			|> Windtrap.VM.exec_binary()
+			|> Windtrap.VM.exec()
 		assert 10 == vm.pc
 	end
 
@@ -70,7 +70,7 @@ defmodule VMTest do
 		module = Windtrap.load_module(module, @env_mock)
 		halted_vm = Windtrap.VM.new([], 1, module)
 			|> Windtrap.VM.break(10)
-			|> Windtrap.VM.exec_binary()
+			|> Windtrap.VM.exec()
 			|> Windtrap.VM.resume()
 		assert 23 == halted_vm.pc
 		assert true == halted_vm.terminated
@@ -89,7 +89,7 @@ defmodule VMTest do
 
 		module = Windtrap.load_module(module, env_module)
 		halted_vm = Windtrap.VM.new([], 1, module)
-			|> Windtrap.VM.exec_binary()
+			|> Windtrap.VM.exec()
 		assert 23 == halted_vm.pc
 		assert true == halted_vm.terminated
 	end
@@ -99,11 +99,11 @@ defmodule VMTest do
 		module = Windtrap.load_module(module)
 
 		vm = Windtrap.VM.new([1], 1, module)
-			|> Windtrap.VM.exec_binary
+			|> Windtrap.VM.exec
 		assert [0] = vm.stack
 
 		vm = Windtrap.VM.new([-1], 1, module)
-			|> Windtrap.VM.exec_binary
+			|> Windtrap.VM.exec
 		assert [1] = vm.stack
 	end
 
@@ -112,7 +112,7 @@ defmodule VMTest do
 		module = Windtrap.load_module(module)
 
 		vm = Windtrap.VM.new([1], 1, module)
-			|> Windtrap.VM.exec_binary
+			|> Windtrap.VM.exec
 		assert [0] = vm.stack
 	end
 

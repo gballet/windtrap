@@ -419,7 +419,7 @@ defmodule Windtrap do
 
 		# Execute it to get the init value
 		tempvm = Windtrap.VM.new([], 0, %Windtrap.Module{code: q, functions: %{0 => %{addr: 0, locals: %{}}}})
-		resultvm = Windtrap.VM.exec_binary(tempvm)
+		resultvm = Windtrap.VM.exec(tempvm)
 		[initval|_] = resultvm.stack
 		# Find the start of the next global init
 		nextoff = resultvm.pc

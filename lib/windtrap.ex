@@ -217,6 +217,12 @@ defmodule Windtrap do
 		end
 	end
 
+	defp get_locals(idx, nlocals, locals, code) when idx >= nlocals, do: {locals, code}
+	defp get_locals(idx, nlocals, locals, rest) do
+		<<n, t, r0 :: binary>> = rest
+		get_locals(idx+n, nlocals, locals ++ List.duplicate(t, n), r0)
+	end
+
 	def vec(type, <<payload :: binary>>) when is_atom(type) do
 		{size, rest} = varint(payload)
 		vec_unfurl(type, {}, size, rest)

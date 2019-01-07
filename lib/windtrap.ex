@@ -34,7 +34,7 @@ defmodule Windtrap do
 	  iex> {:ok, %Windtrap.Module{}} = Windtrap.decode(<<0x00, 0x61, 0x73, 0x6D, 0x01, 0x00, 0x00, 0x00, 0x01, 0x09, 0x02, 0x60, 0x02, 0x7F, 0x7F, 0x00, 0x60, 0x00, 0x00, 0x02, 0x13, 0x01, 0x08, 0x65, 0x74, 0x68, 0x65, 0x72, 0x65, 0x75, 0x6D, 0x06, 0x72, 0x65, 0x76, 0x65, 0x72, 0x74, 0x00, 0x00, 0x03, 0x02, 0x01, 0x01, 0x05, 0x03, 0x01, 0x00, 0x01, 0x07, 0x11, 0x02, 0x06, 0x6D, 0x65, 0x6D, 0x6F, 0x72, 0x79, 0x02, 0x00, 0x04, 0x6D, 0x61, 0x69, 0x6E, 0x00, 0x01, 0x0A, 0x13, 0x01, 0x11, 0x00, 0x41, 0x00, 0x41, 0xCD, 0xD7, 0x02, 0x36, 0x02, 0x00, 0x41, 0x00, 0x41, 0x7F, 0x10, 0x00, 0x0B>>)
 	  {:ok, %Windtrap.Module{
 			exports: {%{export: "memory", index: 0, type: :memidx}, %{export: "main", index: 1, type: :funcidx}},
-			functions: %{0 => %{importname: "revert", modname: "ethereum", tidx: 0, type: :import}, 1 => %{addr: 0, locals: "", num_locals: 0, tidx: 1, type: :local, jumps: %{}, nparams: 0, nresults: 0, signature: {{}, {}}}},
+			functions: %{0 => %{importname: "revert", modname: "ethereum", tidx: 0, type: :import}, 1 => %{addr: 0, locals: %{}, num_locals: 0, tidx: 1, type: :local, jumps: %{}, nparams: 0, nresults: 0, signature: {{}, {}}}},
 			imports: {%{import: "revert", index: 0, mod: "ethereum", type: :typeidx}},
 			sections: %{1 => <<2, 96, 2, 127, 127, 0, 96, 0, 0>>, 2 => <<1, 8, 101, 116, 104, 101, 114, 101, 117, 109, 6, 114, 101, 118, 101, 114, 116, 0, 0>>, 3 => <<1, 1>>, 5 => <<1, 0, 1>>, 7 => <<2, 6, 109, 101, 109, 111, 114, 121, 2, 0, 4, 109, 97, 105, 110, 0, 1>>, 10 => <<1, 17, 0, 65, 0, 65, 205, 215, 2, 54, 2, 0, 65, 0, 65, 127, 16, 0, 11>>},
 			types: {{{:i32, :i32}, {}}, {{}, {}}},
@@ -220,7 +220,7 @@ defmodule Windtrap do
 	defp get_locals(idx, nlocals, locals, code) when idx >= nlocals, do: {locals, code}
 	defp get_locals(idx, nlocals, locals, rest) do
 		<<n, t, r0 :: binary>> = rest
-		get_locals(idx+n, nlocals, locals ++ List.duplicate(t, n), r0)
+		get_locals(idx+n, nlocals, Map.merge(locals, Enum.reduce(idx..(idx+n-1), %{}, fn (i,a) -> Map.put(a, i, t) end)), r0)
 	end
 
 	def vec(type, <<payload :: binary>>) when is_atom(type) do
@@ -275,7 +275,7 @@ defmodule Windtrap do
 		{size, r} = varint(payload)
 		<<code_and_locals::binary-size(size), left::binary>> = r
 		{nlocals, <<r2::binary>>} = varint(code_and_locals)
-		<<locals::binary-size(nlocals), code::binary>> = r2
+		{locals, code} = get_locals(0, nlocals, %{}, r2)
 		{normalized, jumps} = Windtrap.Normalizer.normalize(code)
 		{
 			%{

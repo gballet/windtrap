@@ -234,10 +234,23 @@ defmodule Windtrap.VM do
 		if idx > f.nparams do
 			Map.put(vm, :stack, [f.locals[idx-f.nparams] | vm.stack])
 		else
-			IO.puts inspect vm.params
-			IO.puts inspect elem(vm.params, idx)
 			Map.put(vm, :stack, [elem(vm.params, idx) | vm.stack])
 		end
+	end
+	defp exec_instr(%Windtrap.VM{fidx: fidx, module: mod} = vm, 0x21, idx) do
+		f = mod.functions[fidx]
+		[val|rest] = vm.stack
+		f2 = if idx >= f.nparams do
+			Map.put(f, :locals, Map.put(f.locals, idx-f.nparams, val))
+		else
+			Map.put(f, :params, vm.params |> Tuple.delete_at(idx) |> Tuple.insert_at(idx, val))
+		end
+
+		funcs = Map.put(mod.functions, fidx, f2)
+
+		vm
+			|> Map.put(:functions, funcs)
+			|> Map.put(:stack, rest)
 	end
 	defp exec_instr(%Windtrap.VM{globals: globals} = vm, 0x23, idx), do: Map.put(vm, :stack, [globals[idx] | vm.stack])
 	defp exec_instr(%Windtrap.VM{globals: globals, stack: [val|rest]} = vm, 0x24, idx) do

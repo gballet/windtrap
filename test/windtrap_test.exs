@@ -217,9 +217,9 @@ defmodule WindtrapTest do
 				tidx: 0,
 				type: :import
 			},
-			1 => %{addr: 0, locals: "", num_locals: 0, tidx: 1, type: :local, jumps: %{0 => %{addr: 0, endloc: 22, type: 2}}, nparams: 0, nresults: 1, signature: {{}, {:i32}}},
-			2 => %{addr: 23, locals: "", num_locals: 0, tidx: 2, type: :local, jumps: %{}, nparams: 0, nresults: 0, signature: {{}, {}}},
-			3 => %{addr: 25, locals: "", num_locals: 0, tidx: 2, type: :local, jumps: %{0 => %{addr: 0, endloc: 43, type: 2}}, nparams: 0, nresults: 0, signature: {{}, {}}}
+			1 => %{addr: 0, locals: %{}, num_locals: 0, tidx: 1, type: :local, jumps: %{0 => %{addr: 0, endloc: 22, type: 2}}, nparams: 0, nresults: 1, signature: {{}, {:i32}}},
+			2 => %{addr: 23, locals: %{}, num_locals: 0, tidx: 2, type: :local, jumps: %{}, nparams: 0, nresults: 0, signature: {{}, {}}},
+			3 => %{addr: 25, locals: %{}, num_locals: 0, tidx: 2, type: :local, jumps: %{0 => %{addr: 0, endloc: 43, type: 2}}, nparams: 0, nresults: 0, signature: {{}, {}}}
 		} == m.functions
 	end
 

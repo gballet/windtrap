@@ -282,7 +282,7 @@ defmodule Windtrap.VM do
 	defp exec_instr(%Windtrap.VM{stack: [a|[b|rest]]} = vm, 0x5a, ""), do: Map.put(vm, :stack, [(if unsigned(a,64)>=unsigned(b,64), do: 0, else: 1)|rest])
 	defp exec_instr(%Windtrap.VM{stack: [a|[b|rest]]} = vm, 0x6a, ""), do: Map.put(vm, :stack, [(a+b)|rest])
 
-	defp exec_instr(_, instr, _), do: raise "Invalid instruction #{instr}"
+	defp exec_instr(vm, instr, _), do: raise "Invalid instruction #{instr} at pc=#{vm.pc}"
 
 	def restart vm do
 		vm

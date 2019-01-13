@@ -109,6 +109,13 @@ defmodule Windtrap.VM do
 		y
 	end
 
+	defp i32_bounds(x) when x <= 2147483647 and x >= -2147483648, do: x
+	defp i32_bounds(x) do
+		<<y :: integer-signed-little-size(32), _ :: binary>> = <<x :: integer-little-size(32)>>
+		y
+	end
+
+
 	defp exec_instr(vm, 0, ""), do: raise "Reached unreachable at #{vm.pc-1}"
 	defp exec_instr(vm, 1, ""), do: vm
 	defp exec_instr(vm, 2, type), do:	Map.put(vm, :frames, [{:block,type,vm.pc}|vm.frames])
@@ -280,7 +287,17 @@ defmodule Windtrap.VM do
 	defp exec_instr(%Windtrap.VM{stack: [a|[b|rest]]} = vm, 0x58, ""), do: Map.put(vm, :stack, [(if unsigned(a,64)<=unsigned(b,64), do: 0, else: 1)|rest])
 	defp exec_instr(%Windtrap.VM{stack: [a|[b|rest]]} = vm, 0x59, ""), do: Map.put(vm, :stack, [(if a>=b, do: 0, else: 1)|rest])
 	defp exec_instr(%Windtrap.VM{stack: [a|[b|rest]]} = vm, 0x5a, ""), do: Map.put(vm, :stack, [(if unsigned(a,64)>=unsigned(b,64), do: 0, else: 1)|rest])
-	defp exec_instr(%Windtrap.VM{stack: [a|[b|rest]]} = vm, 0x6a, ""), do: Map.put(vm, :stack, [(a+b)|rest])
+	defp exec_instr(%Windtrap.VM{stack: [a|[b|rest]]} = vm, 0x6a, ""), do: Map.put(vm, :stack, [i32_bounds(a+b)|rest])
+	defp exec_instr(%Windtrap.VM{stack: [a|[b|rest]]} = vm, 0x6b, ""), do: Map.put(vm, :stack, [i32_bounds(a-b)|rest])
+	defp exec_instr(%Windtrap.VM{stack: [a|[b|rest]]} = vm, 0x6c, ""), do: Map.put(vm, :stack, [i32_bounds(a*b)|rest])
+	defp exec_instr(%Windtrap.VM{stack: [a|[b|rest]]} = vm, 0x6d, ""), do: Map.put(vm, :stack, [i32_bounds(div(a, b))|rest])
+	defp exec_instr(%Windtrap.VM{stack: [a|[b|rest]]} = vm, 0x6f, ""), do: Map.put(vm, :stack, [i32_bounds(rem(a, b))|rest])
+	defp exec_instr(%Windtrap.VM{stack: [a|[b|rest]]} = vm, 0x71, ""), do: Map.put(vm, :stack, [i32_bounds(a &&& b)|rest])
+	defp exec_instr(%Windtrap.VM{stack: [a|[b|rest]]} = vm, 0x72, ""), do: Map.put(vm, :stack, [i32_bounds(a ||| b)|rest])
+	defp exec_instr(%Windtrap.VM{stack: [a|[b|rest]]} = vm, 0x73, ""), do: Map.put(vm, :stack, [i32_bounds(a ^^^ b)|rest])
+	defp exec_instr(%Windtrap.VM{stack: [a|[b|rest]]} = vm, 0x74, ""), do: Map.put(vm, :stack, [i32_bounds(a <<< b)|rest])
+	defp exec_instr(%Windtrap.VM{stack: [a|[b|rest]]} = vm, 0x75, ""), do: Map.put(vm, :stack, [i32_bounds(a >>> b)|rest])
+	defp exec_instr(%Windtrap.VM{stack: [a|[b|rest]]} = vm, 0x76, ""), do: Map.put(vm, :stack, [i32_bounds(unsigned(a >>> b, 32))|rest])
 
 	defp exec_instr(vm, instr, _), do: raise "Invalid instruction #{instr} at pc=#{vm.pc}"
 

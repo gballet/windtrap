@@ -6,7 +6,7 @@ defmodule DisassemblerTest do
 
   test "disassemble a simple function" do
     assert {:ok, {dis, 41}, ""} = Windtrap.Disassembler.disassemble(@sample_func_code, 0, %{})
-    assert Map.size(dis) == 12
+    assert map_size(dis) == 12
   end
 
   test "disassembled function starts with a :block instruction" do

@@ -151,10 +151,10 @@ defmodule WindtrapTest do
 		assert byte_size(m.code) == 69
 		assert tuple_size(m.types) == 3
 		assert tuple_size(m.imports) == 5
-		assert Map.size(m.globals) == 3
+		assert map_size(m.globals) == 3
 		assert tuple_size(m.exports) == 4
 		assert tuple_size(m.data) == 1
-		assert Map.size(m.sections) == 9
+		assert map_size(m.sections) == 9
 		assert [] == (Map.keys(m.sections) -- [0, 1, 2, 3, 6, 7, 9, 10, 11])
 	end
 
@@ -189,7 +189,7 @@ defmodule WindtrapTest do
 
 	test "function section can be decoded" do
 		{:ok, m} = Windtrap.decode(@binaryen_dylib_wasm)
-		assert 4 == Map.size(m.functions)
+		assert 4 == map_size(m.functions)
 		Enum.each m.functions, fn {idx, f} ->
 			if idx == 0 do
 				assert :import == f.type
@@ -252,7 +252,7 @@ defmodule WindtrapTest do
 			2 => %{expr: <<65, 0, 0, 0, 0, 11>>, mut: :const, type: :i32, value: 0}
 		} == m.globals
 
-		assert Map.size(m.globals) == 3
+		assert map_size(m.globals) == 3
 	end
 
 	test "memory section can be decoded" do

@@ -147,7 +147,8 @@ defmodule WindtrapTest do
 	end
 
 	test "module sections can be decoded" do
-		{:ok, m} = Windtrap.decode(@binaryen_dylib_wasm)
+		m = Windtrap.decode(@binaryen_dylib_wasm)
+                assert %Windtrap.Module{} = m
 		assert byte_size(m.code) == 69
 		assert tuple_size(m.types) == 3
 		assert tuple_size(m.imports) == 5
@@ -159,7 +160,8 @@ defmodule WindtrapTest do
 	end
 
 	test "import section can be decoded" do
-		{:ok, m} = Windtrap.decode(@binaryen_dylib_wasm)
+		m = Windtrap.decode(@binaryen_dylib_wasm)
+                assert %Windtrap.Module{} = m
 		Enum.each Tuple.to_list(m.imports), fn imp ->
 			assert "env" == imp.mod
 			case imp.import do
@@ -188,7 +190,8 @@ defmodule WindtrapTest do
 	end
 
 	test "function section can be decoded" do
-		{:ok, m} = Windtrap.decode(@binaryen_dylib_wasm)
+		m = Windtrap.decode(@binaryen_dylib_wasm)
+                assert %Windtrap.Module{} = m
 		assert 4 == map_size(m.functions)
 		Enum.each m.functions, fn {idx, f} ->
 			if idx == 0 do
@@ -224,7 +227,8 @@ defmodule WindtrapTest do
 	end
 
 	test "export section can be decoded" do
-		{:ok, m} = Windtrap.decode(@binaryen_dylib_wasm)
+		m = Windtrap.decode(@binaryen_dylib_wasm)
+                assert %Windtrap.Module{} = m
 		Enum.each Tuple.to_list(m.exports), fn exp ->
 			case exp.export do
 				"__post_instantiate" ->
@@ -245,7 +249,8 @@ defmodule WindtrapTest do
 	end
 
 	test "global section can be decoded" do
-		{:ok, m} = Windtrap.decode(@binaryen_dylib_wasm)
+		m = Windtrap.decode(@binaryen_dylib_wasm)
+                assert %Windtrap.Module{} = m
 		assert %{
 			0 => %{expr: <<65, 0, 0, 0, 0, 11>>, mut: :var, type: :i32, value: 0},
 			1 => %{expr: <<65, 0, 0, 0, 0, 11>>, mut: :var, type: :i32, value: 0},
@@ -256,35 +261,41 @@ defmodule WindtrapTest do
 	end
 
 	test "memory section can be decoded" do
-		{:ok, m} = Windtrap.decode(@wasm_with_memory)
+		m = Windtrap.decode(@wasm_with_memory)
+                assert %Windtrap.Module{} = m
 		assert {%{min: 16}} = m.memory
 	end
 
 	test "start section can be decoded" do
-		{:ok, m} = Windtrap.decode(@wasm_with_memory)
+		m = Windtrap.decode(@wasm_with_memory)
+                assert %Windtrap.Module{} = m
 		assert 0 == m.start
 	end
 
 	test "empty element section can be decoded" do
 		# The binaryen example actually has an element
 		# section that has 0 elements.
-		{:ok, m} = Windtrap.decode(@binaryen_dylib_wasm)
+		m = Windtrap.decode(@binaryen_dylib_wasm)
+                assert %Windtrap.Module{} = m
 		assert {} = m.elements
 	end
 
 	test "data section contains 'hello, world!'" do
-		{:ok, m} = Windtrap.decode(@binaryen_dylib_wasm)
+		m = Windtrap.decode(@binaryen_dylib_wasm)
+                assert %Windtrap.Module{} = m
 		assert {0, "hello, world!", true} == elem(m.data, 0)
 	end
 
 	test "can open a file with a missing data section" do
-		{:ok, m} = Windtrap.decode(@wasm_eei_test)
+		m = Windtrap.decode(@wasm_eei_test)
+                assert %Windtrap.Module{} = m
 		assert !Map.has_key?(m, :data)
 	end
 
 	# tester locals dans code
 	test "function disassembly with increasing addresses" do
-		{:ok, m} = Windtrap.decode(@binaryen_dylib_wasm)
+		m = Windtrap.decode(@binaryen_dylib_wasm)
+                assert %Windtrap.Module{} = m
 		addrs = Enum.map(Enum.filter(m.functions, fn {_,f} -> Map.has_key?(f, :addr) end), fn {_, f} -> f.addr end)
 		assert 3 == length(addrs)
 		[f1, f2, f3] = addrs
@@ -293,13 +304,13 @@ defmodule WindtrapTest do
 	end
 
 	test "each function disassembly should end in 0xb" do
-		{:ok, m} = Windtrap.decode(@binaryen_dylib_wasm)
+		m = Windtrap.decode(@binaryen_dylib_wasm)
+                assert %Windtrap.Module{} = m
 		assert <<_ :: binary-size(22), 0xb, 1, 0xb, a :: binary-size(43), 0xb>> = m.code
 	end
 
 	test "module resolution" do
 		Windtrap.decode(@binaryen_dylib_wasm)
-		|> elem(1)
 		|> Windtrap.load_module(@env_mock)
 		|> Map.get(:imports)
 		|> Tuple.to_list

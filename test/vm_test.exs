@@ -21,7 +21,8 @@ defmodule VMTest do
 	}}
 
   test "execute simple module" do
-		assert {:ok, module} = Windtrap.decode(@binaryen_dylib_wasm)
+		module = Windtrap.decode(@binaryen_dylib_wasm)
+                assert %Windtrap.Module{} = module
 		module = module |> Windtrap.load_module(@env_mock)
 
     vm = Windtrap.VM.new([], 3, module)
@@ -41,7 +42,8 @@ defmodule VMTest do
 	end
 
 	test "check execution halts at breakpoint" do
-		assert {:ok, module} = Windtrap.decode(@binaryen_dylib_wasm)
+		module = Windtrap.decode(@binaryen_dylib_wasm)
+                assert %Windtrap.Module{} = module
 		module = Windtrap.load_module(module, @env_mock)
 		vm = Windtrap.VM.new([], 1, module)
 			|> Windtrap.VM.break(10)
@@ -50,14 +52,16 @@ defmodule VMTest do
 	end
 
 	test "check that setting a breakpoint at an invalid address is impossible" do
-		assert {:ok, module} = Windtrap.decode(@binaryen_dylib_wasm)
+		module = Windtrap.decode(@binaryen_dylib_wasm)
+                assert %Windtrap.Module{} = module
 		module = Windtrap.load_module(module, @env_mock)
 		vm = Windtrap.VM.new([], 1, module)
 		assert_raise RuntimeError, fn ->
 			Windtrap.VM.break(vm, -1)
 		end
 
-		assert {:ok, module} = Windtrap.decode(@binaryen_dylib_wasm)
+		module = Windtrap.decode(@binaryen_dylib_wasm)
+                assert %Windtrap.Module{} = module
 		module = Windtrap.load_module(module, @env_mock)
 		vm = Windtrap.VM.new([], 1, module)
 		assert_raise RuntimeError, fn ->
@@ -66,7 +70,8 @@ defmodule VMTest do
 	end
 
 	test "check that it is possible to resume after hitting a breakpoint" do
-		assert {:ok, module} = Windtrap.decode(@binaryen_dylib_wasm)
+		module = Windtrap.decode(@binaryen_dylib_wasm)
+                assert %Windtrap.Module{} = module
 		module = Windtrap.load_module(module, @env_mock)
 		halted_vm = Windtrap.VM.new([], 1, module)
 			|> Windtrap.VM.break(10)
@@ -77,7 +82,8 @@ defmodule VMTest do
 	end
 
 	test "check that it is able to call a native function" do
-		assert {:ok, module} = Windtrap.decode(@binaryen_dylib_wasm)
+		module = Windtrap.decode(@binaryen_dylib_wasm)
+                assert %Windtrap.Module{} = module
 
 		IO.puts inspect @env_mock
 		env_module = Map.put(@env_mock, "env",
@@ -95,7 +101,8 @@ defmodule VMTest do
 	end
 
 	test "execute a simple if/else/end module" do
-		assert {:ok, module} = Windtrap.decode(@if_else_wasm)
+		module = Windtrap.decode(@if_else_wasm)
+                assert %Windtrap.Module{} = module
 		module = Windtrap.load_module(module)
 
 		vm = Windtrap.VM.new([1], 1, module)
@@ -108,7 +115,8 @@ defmodule VMTest do
 	end
 
 	test "execute a simple if/end module" do
-		assert {:ok, module} = Windtrap.decode(@if_wasm)
+		module = Windtrap.decode(@if_wasm)
+                assert %Windtrap.Module{} = module
 		module = Windtrap.load_module(module)
 
 		vm = Windtrap.VM.new([1], 1, module)

@@ -1,3 +1,5 @@
+[![CircleCI](https://circleci.com/gh/gballet/windtrap.svg?style=svg)](https://circleci.com/gh/gballet/windtrap)
+
 # windtrap
 A WASM VM written in Elixir
 

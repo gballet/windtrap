@@ -5,6 +5,7 @@ defmodule Windtrap do
 
  	import Windtrap.Varint
  	use Exceptional.Value
+ 	use Exceptional.TaggedStatus
 
 	@wasm_header (<<0>> <> "asm" <> << 1 ::little-size(32)>>)
 
@@ -61,11 +62,7 @@ defmodule Windtrap do
 	end
 
 	def decode_file filename do
-		with {:ok, data} <- File.read(filename) do
-			decode(data)
-		else
-			x -> x
-		end
+          File.read(filename) ~> decode
 	end
 
 	def dump module do
@@ -112,12 +109,9 @@ defmodule Windtrap do
 			from the local directory.
 	"""
 	def load_file(filename, imports \\ %{}) do
-		with {:ok, m} <- decode_file(filename),
-				mod <- load_module(m, imports) do
-					{:ok, mod}
-			else
-				x -> x
-			end
+          decode_file(filename)
+          ~> load_module(imports)
+          ~> to_tagged_status()
 	end
 
 	@doc """
